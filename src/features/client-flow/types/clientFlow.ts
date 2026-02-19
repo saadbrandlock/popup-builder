@@ -1,10 +1,10 @@
 // Client Flow Types - API-Ready Architecture
 
 import {
-  CBTemplateFieldContentIdMapping,
   CBTemplateFieldContentIdMappingWithContent,
   ClientFlowData,
   ShopperDetails,
+  CBCannedContentGroup,
 } from '@/types';
 
 // Note: DeviceType is re-exported from popup-builder in index.ts
@@ -101,6 +101,27 @@ export interface StepConfig {
 }
 
 // ============================================================================
+// STEP APPROVAL TYPES
+// ============================================================================
+
+export interface StepApproval {
+  status: 'approved' | 'rejected' | 'pending';
+  approved_at?: string;
+  approved_by?: number;
+}
+
+export interface StepStatusMetadata {
+  stepStatus?: {
+    desktopDesign?: StepApproval;
+    mobileDesign?: StepApproval;
+    templateCopy?: StepApproval;
+    [key: string]: StepApproval | undefined;
+  };
+  /** Status from cb_templates (e.g. 'draft', 'published', 'client-review') */
+  templateStatus?: string | null;
+}
+
+// ============================================================================
 // STORE STATE TYPES
 // ============================================================================
 
@@ -118,14 +139,12 @@ export interface ClientFlowState {
   desktopReview: ReviewStatus;
   mobileReview: ReviewStatus;
   finalReview: ReviewStatus;
-  comments: Comment[];
 
   // Error States
   error: string | null;
 
-  shopperDetails: ShopperDetails | null;
+  shopperDetailsCache: Record<string, ShopperDetails>;
   activeContentShopper: {
-    template: { name: string | null; id: string | null };
     content: { name: string | null; id: string | null };
   };
 
@@ -133,6 +152,13 @@ export interface ClientFlowState {
   contentFields: CBTemplateFieldContentIdMappingWithContent[];
   contentFormData: { [key: string]: string };
   selectedDeviceId: number | null;
+  availablePresets: CBCannedContentGroup[];
+  selectedPreset: CBCannedContentGroup | null;
+
+  /** Coupon display data for template preview (offerText, subtext per coupon) */
+  selectedCouponsData: Array<{ offerText: string; subtext: string }>;
+  /** True when user has changed coupon selection (so we show empty when cleared, not template default) */
+  hasCouponSelectionChanged: boolean;
 
   // feedback state
   feedbackData: { [key: string]: string };
@@ -141,11 +167,14 @@ export interface ClientFlowState {
   activeHighlightedField: string | null;
   highlightedFieldName: string | null;
 
-  // selected shopper for content step (CopyReview) and fallback
-  selectedReviewShopperId: number | null;
-
   // selected template for design review (steps 1, 2, 4) when multiple templates per device — template-based as admin grouped
   selectedReviewTemplateId: string | null;
+
+  // Step approval statuses metadata from API — keyed by templateId
+  stepStatuses: Record<string, StepStatusMetadata | null>;
+
+  // UI preferences
+  componentsPanelOpen: boolean;
 }
 
 export interface ClientFlowActions {
@@ -158,19 +187,16 @@ export interface ClientFlowActions {
 
     // Template Management (API-ready)
     setSelectedTemplate: (template: any) => void;
-    setSelectedReviewShopperId: (id: number | null) => void;
     setSelectedReviewTemplateId: (id: string | null) => void;
 
     // Error Management
     clearError: () => void;
 
     // Shopper Details
-    setShopperDetails: (details: ShopperDetails) => void;
+    setShopperDetails: (shopperId: string, details: ShopperDetails) => void;
     setActiveContentShopper: ({
-      template,
       content,
     }: {
-      template?: { name: string; id: string };
       content?: { name: string; id: string };
     }) => void;
 
@@ -178,12 +204,25 @@ export interface ClientFlowActions {
     setContentFields: (fields: CBTemplateFieldContentIdMappingWithContent[]) => void;
     setContentFormData: (data: { [key: string]: string }) => void;
     setSelectedDeviceId: (deviceId: number | null) => void;
+    setSelectedCouponsData: (data: Array<{ offerText: string; subtext: string }>) => void;
+    setHasCouponSelectionChanged: (value: boolean) => void;
+
+    // preset management
+    setAvailablePresets: (presets: CBCannedContentGroup[]) => void;
+    setSelectedPreset: (preset: CBCannedContentGroup | null) => void;
+    clearPresets: () => void;
 
     // field highlighting
     setHighlightedField: (fieldId: string | null, fieldName?: string | null) => void;
 
     // feedback management
     updateFeedbackData: (type: string, value: string) => void;
+
+    // step approval management
+    setStepStatuses: (data: Record<string, StepStatusMetadata | null>) => void;
+
+    // UI preferences
+    setComponentsPanelOpen: (open: boolean) => void;
   };
 }
 

@@ -19,7 +19,7 @@ export function getTemplatesForDevice(
   deviceType: 'desktop' | 'mobile'
 ): ClientFlowData[] {
   if (!clientData?.length) return [];
-  return clientData.filter((t) => t.staging_status === 'client-review' && deviceTypeMatches(t.devices, deviceType));
+  return clientData.filter((t) => (t.staging_status === 'client-review' || t.staging_status === 'admin-review') && deviceTypeMatches(t.devices, deviceType));
 }
 
 /**

@@ -12,7 +12,6 @@ import { selectFirstBlockWhenReady, hidePopupTabInEditor } from '../../builder/u
 import { getAllComponents, getComponent } from '@/custom-components';
 import { detectCustomComponent, findAllCustomComponentsInDesign, type DetectedComponent } from '@/custom-components/utils/detection';
 import { updateComponentInDesign } from '@/custom-components/utils/designUpdater';
-import { OverlayPropertyPanel } from '@/custom-components/components/OverlayPropertyPanel';
 import { ActiveComponentsList } from '@/custom-components/components/ActiveComponentsList';
 
 const { Title, Text } = Typography;
@@ -299,109 +298,89 @@ export const ClientEditorStep: React.FC<ClientEditorStepProps> = ({
         />
       )}
 
-      {/* Editor Container - only mount when template (and devices) is loaded so device view is correct */}
-      <div style={{ position: 'relative', display: 'flex', width: '100%' }}>
-        {allCustomComponents.length > 0 && (
-          <ActiveComponentsList
-            components={allCustomComponents}
-            selectedComponent={selectedComponent}
-            onSelect={setSelectedComponent}
-          />
-        )}
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Card>
-            <div
-              style={{
-                height: '700px',
-                border: '1px solid #d9d9d9',
-                borderRadius: '6px',
-                overflow: 'hidden',
-              }}
-            >
-              {!templateState ? (
-                <div className="flex items-center justify-center h-full min-h-[400px]">
-                  <Spin size="large" tip="Loading editor..." />
-                </div>
-              ) : (
-                <EmailEditor
-                  key={`bl-client-editor-${templateId ?? ''}-${devices.join('-')}-${defaultDevice}`}
-                  editorId="bl-client-editor"
-                  ref={editorRef}
-                  onReady={(unlayer) => {
-                    onEditorReady(unlayer);
-                    selectFirstBlockWhenReady(unlayer, 'bl-client-editor');
-                    hidePopupTabInEditor('bl-client-editor');
-                  }}
-                  options={{
-                    ...unlayerConfig,
-                    appearance: {
-                      ...unlayerConfig.appearance,
-                      panels: {
-                        ...unlayerConfig.appearance?.panels,
-                        tools: {
-                          ...unlayerConfig.appearance?.panels?.tools,
-                          dock: 'left',
-                        },
+      {/* Custom Components Panel — above the editor, full width */}
+      {allCustomComponents.length > 0 && (
+        <ActiveComponentsList
+          components={allCustomComponents}
+          selectedComponent={selectedComponent}
+          onSelect={setSelectedComponent}
+          onPropsChange={handlePropsChange}
+          userRole={userRole}
+        />
+      )}
+
+      {/* Editor Container */}
+      <div className="relative">
+        <Card>
+          <div
+            style={{
+              height: '700px',
+              border: '1px solid #d9d9d9',
+              borderRadius: '6px',
+              overflow: 'hidden',
+            }}
+          >
+            {!templateState ? (
+              <div className="flex items-center justify-center h-full min-h-[400px]">
+                <Spin size="large" tip="Loading editor..." />
+              </div>
+            ) : (
+              <EmailEditor
+                key={`bl-client-editor-${templateId ?? ''}-${devices.join('-')}-${defaultDevice}`}
+                editorId="bl-client-editor"
+                ref={editorRef}
+                onReady={(unlayer) => {
+                  onEditorReady(unlayer);
+                  selectFirstBlockWhenReady(unlayer, 'bl-client-editor');
+                  hidePopupTabInEditor('bl-client-editor');
+                }}
+                options={{
+                  ...unlayerConfig,
+                  appearance: {
+                    ...unlayerConfig.appearance,
+                    panels: {
+                      ...unlayerConfig.appearance?.panels,
+                      tools: {
+                        ...unlayerConfig.appearance?.panels?.tools,
+                        dock: 'left',
                       },
                     },
-                    tools: { ...manageEditorMode(true), html: { enabled: false } },
-                    mergeTags: manageMergeTags(),
-                    devices,
-                    defaultDevice,
-                    tabs: {
-                      content: { enabled: false },
-                      blocks: { enabled: false },
-                      popup: { enabled: false },
-                      Popup: { enabled: false },
-                      dev: { enabled: false },
-                    },
-                    features: {
-                      ...unlayerConfig.features,
-                      textEditor: { triggerChangeWhileEditing: true, debounce: 300 } as Record<string, unknown>,
-                      audit: false,
-                    },
-                    customCSS: [
-                      `.blockbuilder-content-tool-html .blockbuilder-options-content { display: none !important; }`,
-                      `.blockbuilder-content-tool-html .blockbuilder-options::after { content: 'Use the properties panel to edit this component →'; display: block; padding: 20px; text-align: center; color: #9CA3AF; font-size: 13px; }`,
-                    ],
-                  }}
-                  style={{
-                    height: '700px',
-                    width: '100%',
-                  }}
-                />
-              )}
-            </div>
-          </Card>
+                  },
+                  tools: { ...manageEditorMode(true), html: { enabled: false } },
+                  mergeTags: manageMergeTags(),
+                  devices,
+                  defaultDevice,
+                  tabs: {
+                    content: { enabled: false },
+                    blocks: { enabled: false },
+                    popup: { enabled: false },
+                    Popup: { enabled: false },
+                    dev: { enabled: false },
+                  },
+                  features: {
+                    ...unlayerConfig.features,
+                    textEditor: { triggerChangeWhileEditing: true, debounce: 300 } as Record<string, unknown>,
+                    audit: false,
+                  },
+                  customCSS: [
+                    `.blockbuilder-content-tool-html .blockbuilder-options-content { display: none !important; }`,
+                    `.blockbuilder-content-tool-html .blockbuilder-options::after { content: 'Use the properties panel to edit this component →'; display: block; padding: 20px; text-align: center; color: #9CA3AF; font-size: 13px; }`,
+                  ],
+                }}
+                style={{
+                  height: '700px',
+                  width: '100%',
+                }}
+              />
+            )}
+          </div>
+        </Card>
 
-          {isReloading && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 360,
-                bottom: 0,
-                background: 'rgba(255,255,255,0.7)',
-                zIndex: 9998,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ fontSize: '14px', color: '#6B7280' }}>Updating preview...</span>
-            </div>
-          )}
-
-          {selectedComponent && (
-            <OverlayPropertyPanel
-              component={selectedComponent}
-              onPropsChange={handlePropsChange}
-              onClose={() => setSelectedComponent(null)}
-              userRole={userRole}
-            />
-          )}
-        </div>
+        {isReloading && (
+          <div className="absolute inset-0 bg-white/70 z-[5] flex items-center justify-center">
+            <span className="text-sm text-gray-500">Updating preview...</span>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

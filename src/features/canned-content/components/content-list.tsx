@@ -8,10 +8,15 @@ import {
   Popconfirm,
   message,
   Card,
+  Tag,
+  Table,
+  Row,
+  Col,
 } from 'antd';
+import { FolderOutlined } from '@ant-design/icons';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { CBCannedContent } from '@/types';
+import { CBCannedContentGroup, CreateContentGroupRequest } from '@/types';
 import { useContentListingStore } from '@/stores/list/contentListing';
 import { useContent } from '../hooks/use-content';
 import { BaseProps } from '@/types/props';
@@ -27,6 +32,7 @@ import { useSyncGenericContext } from '@/lib/hooks/use-sync-generic-context';
 import { splitByAndCapitalize } from '@/lib/utils/helper';
 
 const { Search } = Input;
+const { Text, Paragraph } = Typography;
 
 export interface CannedContentListProps extends BaseProps {}
 
@@ -48,14 +54,11 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
   });
 
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [editingContent, setEditingContent] = useState<CBCannedContent | null>(
-    null
-  );
 
-  const { actions, pagination, filters, sorter, industries, fields, contents } =
+  const { actions, pagination, filters, sorter, industries, contentGroups, selectedGroup } =
     useContentListingStore();
 
-  const { contentSubDataLoading, contentListingLoading } = useLoadingStore();
+  const { contentSubDataLoading, contentListingLoading, actions: loadingActions } = useLoadingStore();
 
   const genericActions = useGenericStore((s) => s.actions);
   const genericAccountDetails = useGenericStore((s) => s.accountDetails);
@@ -64,20 +67,20 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
   const genericNavigate = useGenericStore((s) => s.navigate);
 
   const {
-    getContent,
-    deleteContent,
-    updateContent,
-    createContent,
+    getContentGroups,
+    deleteContentGroup,
+    updateContentGroup,
+    createContentGroup,
     getFields,
     getIndustries,
   } = useContent();
 
-  const handleTableChange: TableProps<CBCannedContent>['onChange'] = (
+  const handleTableChange: TableProps<CBCannedContentGroup>['onChange'] = (
     newPagination,
     _,
     newSorter
   ) => {
-    const sorterResult = newSorter as SorterResult<CBCannedContent>;
+    const sorterResult = newSorter as SorterResult<CBCannedContentGroup>;
     const newSortColumn = sorterResult.field as string;
     const newSortDirection = sorterResult.order as 'ascend' | 'descend';
 
@@ -103,35 +106,36 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
     actions.setPagination({ ...pagination, current: 1 });
   };
 
-  const handleEdit = (content: CBCannedContent) => {
-    setEditingContent(content);
+  const handleEdit = (group: CBCannedContentGroup) => {
+    actions.setSelectedGroup(group);
     setIsFormVisible(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (headingId: number) => {
     try {
-      await deleteContent(id);
-      message.success('Content deleted successfully');
-      getContent();
+      await deleteContentGroup(headingId);
+      message.success('Content group deleted successfully');
     } catch (error) {
-      console.error('Error deleting content:', error);
+      message.error('Failed to delete content group');
+      console.error('Error deleting content group:', error);
     }
   };
 
-  const handleFormSubmit = async (values: any) => {
+  const handleFormSubmit = async (values: CreateContentGroupRequest) => {
+    loadingActions.setContentSubmitLoading(true);
     try {
-      if (editingContent) {
-        await updateContent(editingContent.id, values);
-        message.success('Content updated successfully');
+      if (selectedGroup) {
+        await updateContentGroup(selectedGroup.parent.id, values);
+        message.success('Content group updated successfully');
       } else {
-        await createContent(values);
-        message.success('Content created successfully');
+        await createContentGroup(values);
+        message.success('Content group created successfully');
       }
       setIsFormVisible(false);
-      setEditingContent(null);
-      getContent();
+      actions.setSelectedGroup(null);
     } catch (error) {
-      console.error('Error saving content:', error);
+    } finally {
+      loadingActions.setContentSubmitLoading(false);
     }
   };
 
@@ -140,72 +144,117 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
     getFields();
   }, []);
 
-  const debouncedFetchContents = useDebouncedCallback(() => getContent(), 500);
+  const debouncedFetchGroups = useDebouncedCallback(
+    () => getContentGroups(),
+    500
+  );
 
   useEffect(() => {
     if (filters.search !== undefined) {
-      debouncedFetchContents();
+      debouncedFetchGroups();
     } else {
-      getContent();
+      getContentGroups();
     }
   }, [pagination.current, pagination.pageSize, filters, sorter]);
 
-  const columns: TableProps<CBCannedContent>['columns'] = [
+  // Parent row columns (Table.EXPAND_COLUMN first to avoid expandIconColumnIndex deprecation)
+  const columns: TableProps<CBCannedContentGroup>['columns'] = [
+    Table.EXPAND_COLUMN,
+    {
+      title: 'Content Set Name',
+      dataIndex: ['parent', 'group_label'],
+      key: 'group_label',
+      sorter: true,
+      width: 200,
+      fixed: 'left',
+      render: (text, record) => {
+        return (
+           <Space>
+            <FolderOutlined style={{ color: '#1890ff' }} />
+              <strong>{text}</strong>
+            </Space>
+        );
+      },
+    },
     {
       title: 'Industry',
-      dataIndex: 'industry',
+      dataIndex: ['parent', 'industry'],
       key: 'industry',
       sorter: true,
-      render: (text) => splitByAndCapitalize(text, '_'),
+      width: 150,
+      render: (text) => (text ? splitByAndCapitalize(text, '_') : '-'),
     },
     {
-      title: 'Field',
-      dataIndex: 'field_name',
-      key: 'field_name',
-      sorter: true,
-      render: (text) => splitByAndCapitalize(text, '_'),
+      title: 'Heading Preview',
+      dataIndex: ['parent', 'content'],
+      key: 'heading_content',
+      width: 300,
+      render: (text) => (
+        <Text ellipsis={{ tooltip: text }} style={{ maxWidth: 280 }}>
+          {text || '-'}
+        </Text>
+      ),
     },
     {
-      title: 'Content',
-      dataIndex: 'content',
-      key: 'content',
-      sorter: true,
-      render: (text) => <div style={{ maxWidth: 300 }}>{text}</div>,
+      title: 'Shopper Segments',
+      dataIndex: ['parent', 'shopper_ids'],
+      key: 'shoppers',
+      width: 200,
+      render: (shopperIds: number[]) => {
+        if (!shopperIds?.length) return '-';
+        return (
+          <Space size={4} wrap>
+            {shopperIds.slice(0, 2).map((id) => {
+              const shopper = shoppers.find((s) => s.id === id);
+              return shopper ? <Tag key={id}>{shopper.name}</Tag> : null;
+            })}
+            {shopperIds.length > 2 && (
+              <Tag>+{shopperIds.length - 2} more</Tag>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Last Updated',
-      dataIndex: 'updated_at',
+      dataIndex: ['parent', 'updated_at'],
       key: 'updated_at',
       sorter: true,
+      width: 150,
       render: (dateString) => (
-        <TimeDisplay
-          dateString={dateString}
-          showIcon={true}
-          showRelative={true}
-        />
+        <TimeDisplay dateString={dateString} showIcon showRelative />
       ),
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button type="link" onClick={() => handleEdit(record)}>
-            Edit
-          </Button>
-          <Popconfirm
-            title="Delete Content"
-            description="Are you sure you want to delete this content?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button type="link" danger>
-              Delete
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => {
+        const groupLabel = record?.parent?.group_label ?? 'this content group';
+        const fieldsCount = record?.children?.length ?? 0;
+        const parentId = record?.parent?.id;
+
+        return (
+          <Space size="small">
+            <Button type="link" size="small" onClick={() => handleEdit(record)}>
+              Edit
             </Button>
-          </Popconfirm>
-        </Space>
-      ),
+            <Popconfirm
+              title="Delete Content Group"
+              description={`This will delete "${groupLabel}" and all ${fieldsCount} field(s). Continue?`}
+              onConfirm={() => parentId && handleDelete(parentId)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="link" size="small" danger>
+                Delete
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -228,23 +277,6 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
       ),
     },
     {
-      key: 'field',
-      component: (
-        <Select
-          value={filters.field}
-          allowClear
-          style={{ width: '100%' }}
-          placeholder="Filter by Field"
-          onChange={(value) => handleFilterChange('field', value)}
-          options={fields.map((f) => ({
-            label: splitByAndCapitalize(f.key, '_'),
-            value: f.value,
-          }))}
-          loading={contentSubDataLoading}
-        />
-      ),
-    },
-    {
       key: 'shoppers',
       component: (
         <Select
@@ -261,9 +293,19 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
   ];
 
   const actionButtons = (
-    <Button type="primary" onClick={() => setIsFormVisible(true)}>
-      Add New Content
-    </Button>
+    <Space>
+      <Button type="primary" onClick={() => setIsFormVisible(true)}>
+        Add New Content Set
+      </Button>
+    </Space>
+  );
+
+  // Only show groups that have a valid parent and at least one child (avoid empty placeholder rows)
+  const displayGroups = contentGroups.filter(
+    (group) =>
+      group?.parent?.id != null &&
+      Array.isArray(group.children) &&
+      group.children.length > 0
   );
 
   useEffect(() => {
@@ -274,35 +316,27 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
       genericActions.setAuthProvider(authProvider);
     }
     if (!genericShoppers.length && shoppers) {
-      genericActions.setShoppers(shoppers);
+      genericActions.setShoppers(shoppers)
     }
     if (!genericNavigate && navigate) {
-      genericActions.setNavigate(navigate);
+      genericActions.setNavigate(navigate)
     }
   }, [authProvider, accountDetails, shoppers, navigate]);
 
   return (
     <>
-      {/* {error && (
-        <Alert
-          message={error}
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )} */}
       <Card>
-        <SharedTemplateTable<CBCannedContent>
+        <SharedTemplateTable<CBCannedContentGroup>
           columns={columns}
-          rowKey="id"
-          dataSource={contents}
+          rowKey={(_, index?: number) =>`row-${index ?? -1}`}
+          dataSource={displayGroups}
           pagination={pagination}
           loading={contentListingLoading}
           onChange={handleTableChange}
           filters={filterComponents}
           search={
             <Search
-              placeholder="Search content......."
+              placeholder="Search content groups..."
               allowClear
               onSearch={(value) => handleFilterChange('search', value || null)}
               onChange={(e) =>
@@ -311,20 +345,65 @@ const CannedContentList: React.FC<CannedContentListProps> = ({
               style={{ width: '400px' }}
             />
           }
+          scroll={{ x: 1200 }}
           actionButtons={actionButtons}
           onResetFilters={handleResetFilters}
+          expandable={{
+            expandedRowRender: (group) => (
+              <div className="py-4">
+                <Row gutter={[16, 16]}>
+                  {(group.children ?? []).map((child, index) => (
+                    <Col
+                      key={child?.id != null ? child.id : `child-${index}`}
+                      xs={24}
+                      sm={12}
+                      lg={8}
+                      xl={6}
+                    >
+                      <Card
+                        size="small"
+                        hoverable
+                        className="h-full rounded-lg border-gray-200"
+                        styles={{body: { padding: '12px 16px' }}}
+                      >
+                        <Space direction="vertical" size={8} className="w-full">
+                          <Tag color="geekblue" className="mr-0">
+                            {child?.field_name ? splitByAndCapitalize(child.field_name, '_') : '-'}
+                          </Tag>
+
+                          <Paragraph
+                            ellipsis={{ tooltip: child?.content, rows: 2 }}
+                            className="block text-gray-800 text-sm leading-relaxed min-h-[42px]"
+                          >
+                            {child?.content || '-'}
+                          </Paragraph>
+
+                          <div className="pt-1 border-t border-gray-100">
+                            <TimeDisplay
+                              dateString={child?.updated_at}
+                              showRelative
+                            />
+                          </div>
+                        </Space>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
+            ),
+            rowExpandable: (group) => !!group.children && group.children.length > 0,
+          }}
         />
       </Card>
       <CannedContentForm
         visible={isFormVisible}
         onCancel={() => {
           setIsFormVisible(false);
-          setEditingContent(null);
+          actions.setSelectedGroup(null);
         }}
         onSubmit={handleFormSubmit}
-        initialValues={editingContent}
+        editingGroup={selectedGroup}
         industries={industries}
-        fields={fields}
       />
     </>
   );

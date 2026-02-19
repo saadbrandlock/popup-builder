@@ -450,23 +450,47 @@ export const TemplatesListing: React.FC<TemplatesListingProps> = ({
   const debouncedFetchTemplates = useDebouncedCallback(() => getTemplates(), 500);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!previewModalVisible || !previewTemplate) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     const designJson = previewTemplate.builder_state_json;
     if (!designJson || !validateUnlayerDesign(designJson)) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     setLoadingConversion(true);
     convertUnlayerJsonToHtml(designJson)
-      .then((html) => setPreviewHtml(html))
+      .then((html) => {
+        if (!cancelled) {
+          setPreviewHtml(html);
+        }
+      })
       .catch((err) => {
         console.error('Failed to convert builder_state_json to HTML for preview:', err);
-        setPreviewHtml(null);
+        if (!cancelled) {
+          setPreviewHtml(null);
+        }
       })
-      .finally(() => setLoadingConversion(false));
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingConversion(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [previewModalVisible, previewTemplate?.id, previewTemplate?.builder_state_json]);
 
   const previewReady = previewModalVisible && !!previewTemplate && !!previewHtml;

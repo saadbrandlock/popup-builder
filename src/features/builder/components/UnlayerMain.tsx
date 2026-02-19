@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Button, Space, Typography, Card, Row, Col, Alert, Badge } from 'antd';
+import { Button, Space, Typography, Card, Row, Col, Alert, Badge, Tooltip } from 'antd';
+import { RightOutlined } from '@ant-design/icons';
 import EmailEditor, { UnlayerOptions } from 'react-email-editor';
 import { useUnlayerEditor } from '../hooks/useUnlayerEditor';
 import { useUnlayerDeviceOptions } from '../hooks/useUnlayerDeviceOptions';
@@ -11,9 +12,9 @@ import StepNavigation, { createPreviousButton, createNextButton } from './common
 import { getAllComponents, getComponent } from '@/custom-components';
 import { detectCustomComponent, findAllCustomComponentsInDesign, type DetectedComponent } from '@/custom-components/utils/detection';
 import { updateComponentInDesign, injectComponentRow } from '@/custom-components/utils/designUpdater';
-import { OverlayPropertyPanel } from '@/custom-components/components/OverlayPropertyPanel';
 import { ActiveComponentsList } from '@/custom-components/components/ActiveComponentsList';
 import { ComponentGallery } from '@/custom-components/components/ComponentGallery';
+import { useClientFlowStore } from '@/stores/clientFlowStore';
 
 const { Title, Text } = Typography;
 
@@ -22,7 +23,6 @@ interface UnlayerMainProps {
   initialDesign?: any;
   onSave?: (design: any) => Promise<void>;
   onError?: (error: Error) => void;
-  // Image upload configuration
   enableCustomImageUpload?: boolean;
   clientTemplateId?: string;
   saveMode?: 'staging' | 'base';
@@ -37,12 +37,10 @@ export const UnlayerMain = ({
   clientTemplateId = '',
   saveMode = 'staging',
 }: UnlayerMainProps) => {
-  // State for UI controls
   const [autoSaveInterval] = useState(30);
   const [designMode, setDesignMode] = useState(false);
   const [showStepsNavigation, setShowStepsNavigation] = useState(true);
 
-  // Custom components: overlay, gallery, selection
   const userRole = 'admin' as const;
   const [selectedComponent, setSelectedComponent] = useState<DetectedComponent | null>(null);
   const [allCustomComponents, setAllCustomComponents] = useState<DetectedComponent[]>([]);
@@ -52,7 +50,6 @@ export const UnlayerMain = ({
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUpdatingRef = useRef(false);
 
-  // Store values for image upload (apiClient from generic store)
   const {
     currentTemplateId,
     actions: builderActions,
@@ -60,11 +57,10 @@ export const UnlayerMain = ({
   const authProvider = useGenericStore((s) => s.authProvider);
   const apiClient = useGenericStore((s) => s.apiClient);
 
-  // Loading states for showing combined loading status
   const { builderAutosaving } = useLoadingStore();
-
-  // Device options from template (mobile-only, desktop-only, or both)
   const { devices, defaultDevice } = useUnlayerDeviceOptions();
+  const componentsPanelOpen = useClientFlowStore((s) => s.componentsPanelOpen);
+  const setComponentsPanelOpen = useClientFlowStore((s) => s.actions.setComponentsPanelOpen);
 
   const extendEditorReady = useCallback((unlayer: any) => {
     unlayer.registerProvider('blocks', (_params: any, done: (blocks: any[]) => void) => {
@@ -130,7 +126,6 @@ export const UnlayerMain = ({
     });
   }, []);
 
-  // Main editor hook with all functionality
   const {
     editorRef,
     isReady,
@@ -158,7 +153,6 @@ export const UnlayerMain = ({
     extendEditorReady,
   });
 
-  // Warn user before leaving with unsaved changes
   const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
   useEffect(() => {
     hasUnsavedChangesRef.current = hasUnsavedChanges;
@@ -216,14 +210,12 @@ export const UnlayerMain = ({
     [editorRef]
   );
 
-  // Load initial design when component mounts
   useEffect(() => {
     if (initialDesign && isReady) {
       loadDesign(initialDesign);
     }
   }, [initialDesign, isReady, loadDesign]);
 
-  // Sync custom components list and lastDesignRef when editor is ready (e.g. after template load)
   useEffect(() => {
     if (!isReady || !editorRef.current?.editor) return;
     const unlayer = editorRef.current.editor;
@@ -233,7 +225,6 @@ export const UnlayerMain = ({
       setAllCustomComponents(found);
     });
   }, [isReady]);
-
 
   useEffect(() => {
     setDesignMode(window.location.href.includes('user-template-editor'));
@@ -321,16 +312,95 @@ export const UnlayerMain = ({
         />
       )}
 
-      {/* Editor Container */}
-      <div style={{ position: 'relative', display: 'flex', width: '100%' }}>
+      {/* ── Animated split layout: components panel + editor ── */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+
+        {/* Components Panel — animates between expanded (272px) and collapsed (44px) */}
         {allCustomComponents.length > 0 && (
-          <ActiveComponentsList
-            components={allCustomComponents}
-            selectedComponent={selectedComponent}
-            onSelect={setSelectedComponent}
-          />
+          <div
+            style={{
+              width: componentsPanelOpen ? 272 : 44,
+              flexShrink: 0,
+              transition: 'width 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            {/* Expanded panel */}
+            <div
+              style={{
+                opacity: componentsPanelOpen ? 1 : 0,
+                transition: 'opacity 0.18s ease',
+                pointerEvents: componentsPanelOpen ? 'auto' : 'none',
+                width: 272,
+              }}
+            >
+              <ActiveComponentsList
+                components={allCustomComponents}
+                selectedComponent={selectedComponent}
+                onSelect={setSelectedComponent}
+                onPropsChange={handlePropsChange}
+                onCollapse={() => setComponentsPanelOpen(false)}
+                userRole={userRole}
+              />
+            </div>
+
+            {/* Collapsed strip — fades in when closed */}
+            <Tooltip title="Custom Components" placement="right">
+              <div
+                onClick={() => setComponentsPanelOpen(true)}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: 44,
+                  height: '100%',
+                  minHeight: 200,
+                  opacity: componentsPanelOpen ? 0 : 1,
+                  transition: 'opacity 0.2s ease 0.08s',
+                  pointerEvents: componentsPanelOpen ? 'none' : 'auto',
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  paddingTop: 14,
+                  gap: 10,
+                  userSelect: 'none',
+                }}
+                className="hover:border-blue-300 hover:shadow-sm"
+              >
+                <span style={{ fontSize: 18 }}>🧩</span>
+                <Badge
+                  count={allCustomComponents.length}
+                  color="geekblue"
+                  size="small"
+                  style={{ fontSize: 9 }}
+                />
+                <div
+                  style={{
+                    writingMode: 'vertical-lr',
+                    transform: 'rotate(180deg)',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#8c8c8c',
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase',
+                    marginTop: 4,
+                  }}
+                >
+                  Components
+                </div>
+                <RightOutlined style={{ fontSize: 10, color: '#bbb', marginTop: 'auto', marginBottom: 12 }} />
+              </div>
+            </Tooltip>
+          </div>
         )}
-        <div style={{ position: 'relative', flex: 1 }}>
+
+        {/* Editor — takes all remaining space */}
+        <div className="relative flex-1 min-w-0">
           <Card>
             <div
               style={{
@@ -341,76 +411,52 @@ export const UnlayerMain = ({
               }}
             >
               <EmailEditor
-              editorId="bl-popup-builder"
-              ref={editorRef}
-              onReady={onEditorReady}
-              options={{
-                ...unlayerConfig,
-                appearance: {
-                  ...unlayerConfig.appearance,
-                  panels: {
-                    ...unlayerConfig.appearance?.panels,
-                    tools: {
-                      ...unlayerConfig.appearance?.panels?.tools,
-                      dock: 'left',
+                editorId="bl-popup-builder"
+                ref={editorRef}
+                onReady={onEditorReady}
+                options={{
+                  ...unlayerConfig,
+                  appearance: {
+                    ...unlayerConfig.appearance,
+                    panels: {
+                      ...unlayerConfig.appearance?.panels,
+                      tools: {
+                        ...unlayerConfig.appearance?.panels?.tools,
+                        dock: 'left',
+                      },
                     },
                   },
-                },
-                tools: manageEditorMode(designMode),
-                mergeTags: manageMergeTags(),
-                devices,
-                defaultDevice,
-                features: {
-                  ...unlayerConfig.features,
-                  textEditor: { triggerChangeWhileEditing: true, debounce: 300 } as Record<string, unknown>,
-                  ...(designMode && { audit: false }),
-                },
-                ...(designMode && {
-                  tabs: {
-                    content: { enabled: false },
-                    blocks: { enabled: false },
-                    popup: { enabled: false },
-                    Popup: { enabled: false },
-                    dev: { enabled: false },
+                  tools: manageEditorMode(designMode),
+                  mergeTags: manageMergeTags(),
+                  devices,
+                  defaultDevice,
+                  features: {
+                    ...unlayerConfig.features,
+                    textEditor: { triggerChangeWhileEditing: true, debounce: 300 } as Record<string, unknown>,
+                    ...(designMode && { audit: false }),
                   },
-                }),
-              }}
-              style={{
-                height: '700px',
-                width: '100%',
-              }}
-            />
-          </div>
-        </Card>
+                  ...(designMode && {
+                    tabs: {
+                      content: { enabled: false },
+                      blocks: { enabled: false },
+                      popup: { enabled: false },
+                      Popup: { enabled: false },
+                      dev: { enabled: false },
+                    },
+                  }),
+                }}
+                style={{
+                  height: '700px',
+                  width: '100%',
+                }}
+              />
+            </div>
+          </Card>
 
           {isReloading && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 360,
-                bottom: 0,
-                background: 'rgba(255,255,255,0.7)',
-                zIndex: 9998,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ fontSize: '14px', color: '#6B7280' }}>Updating preview...</span>
+            <div className="absolute inset-0 bg-white/70 z-[5] flex items-center justify-center">
+              <span className="text-sm text-gray-500">Updating preview...</span>
             </div>
-          )}
-
-          {/* Custom component property panel — overlay on the right over the editor */}
-          {selectedComponent && (
-            <OverlayPropertyPanel
-              component={selectedComponent}
-              onPropsChange={handlePropsChange}
-              onClose={() => setSelectedComponent(null)}
-              userRole={userRole}
-              placement="left"
-            />
           )}
         </div>
       </div>

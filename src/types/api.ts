@@ -184,11 +184,43 @@ export interface CBCannedContent {
   created_at: string;
   created_by: number | null;
   status: string;
+  parent_group_id?: number | null; // NULL = parent (heading), number = child
+  group_label?: string | null; // Only populated on parent records
+  display_order?: number; // Order within group
+  field_name?: string; // Display name for field (from field definitions)
+  remarks?: string; // Already used in UI but missing from type
+  updated_at?: string; // Already used in UI but missing from type
 }
 
 export type CBCannedContentWithShoppers = CBCannedContent & {
   shopper_ids: number[];
 };
+
+// Grouped representation for UI
+export interface CBCannedContentGroup {
+  parent: CBCannedContentWithShoppers; // Heading record with group_label
+  children: CBCannedContentWithShoppers[]; // Child records (sub_heading, dismiss_text, etc.)
+}
+
+// Request type for creating a group
+export interface CreateContentGroupRequest {
+  group_label: string; // Name for the content set
+  industry: string;
+  shopper_ids: number[];
+  remarks?: string;
+  fields: Array<{
+    field_id: string;
+    content: string;
+    /** When updating, existing child row id so backend can update only this row's updated_at/updated_by */
+    child_id?: number;
+  }>;
+}
+
+// Paginated response for grouped listing
+export interface GroupedContentResponse
+  extends PaginatedResponse<CBCannedContentGroup> {
+  // Inherits: page, limit, count, results
+}
 
 export interface TCBTemplateStaging extends AuditMetadata {
   id: string;
@@ -302,6 +334,44 @@ export interface GetShopperDetailsPayload {
 // =====================
 // = client flow data =
 // =====================
+
+/** Content preset structure (parent + children from cb_canned_content) */
+export interface ShopperContentPreset {
+  parent: {
+    id: number;
+    group_label: string | null;
+    content: string | null;
+    field: string | null;
+    /** Template field_id (e.g. template__heading-main) for form binding */
+    field_id?: string | null;
+  };
+  children: Array<{
+    id: number;
+    content: string | null;
+    field: string | null;
+    /** Template field_id for form binding */
+    field_id?: string | null;
+  }>;
+}
+
+/** Coupon item from v2_promocode */
+export interface ShopperCouponItem {
+  promo_code_id: number;
+  code: string;
+  offer_heading: string;
+  offer_sub_heading: string | null;
+  is_active: boolean;
+}
+
+export interface ClientFlowShopper {
+  id: number;
+  name: string;
+  content_preset_id?: number | null;
+  coupon_ids?: number[] | null;
+  content?: ShopperContentPreset | null;
+  coupons?: ShopperCouponItem[] | null;
+}
+
 export interface ClientFlowData {
   template_id: string;
   template_name: string;
@@ -333,7 +403,7 @@ export interface ClientFlowData {
   account_mapping_id: number;
   account_id: number;
   account_mapping_created_at: string;
-  shoppers: { id: number; name: string }[];
+  shoppers: ClientFlowShopper[];
   device_type_ids: number[];
   devices: { id: number; device_type: string }[];
 }

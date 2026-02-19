@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useClientFlow } from '../hooks/use-client-flow';
 import { useGenericStore } from '@/stores/generic.store';
 import { useClientFlowStore } from '@/stores/clientFlowStore';
 import { useLoadingStore } from '@/stores/common/loading.store';
-import { Card, Typography, Button, Modal, Carousel, Image, Divider, Tabs, Tooltip, Collapse } from 'antd';
-import { ShopperDetails as TShopperDetails } from '@/types';
+import { Card, Typography, Button, Divider, Tooltip, Collapse } from 'antd';
+
 import { shopperDetailsDummyData } from '../utils/shopper-details-dummy-data';
 import { ShopperDescriptionSkeleton } from '@/components/skeletons';
+import ShopperDetailsModal from './ShopperDetailsModal';
 import { Users, AlertCircle, CheckCircle, Eye, FileText, Activity, Lightbulb } from 'lucide-react';
 
 const { Text, Title, Paragraph } = Typography;
@@ -20,32 +21,29 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
   const { getShopperDetails } = useClientFlow();
   const accountDetails = useGenericStore((s) => s.accountDetails);
 
-  const { activeContentShopper, shopperDetails } = useClientFlowStore();
+  const { activeContentShopper, shopperDetailsCache } = useClientFlowStore();
   const { shopperDetailsLoading } = useLoadingStore();
 
-  const [shopperDetailsData, setShopperDetailsData] =
-    useState<TShopperDetails | null>(null);
+  const shopperDetails = shopperDetailsCache[activeContentShopper?.content?.id ?? ''] ?? null;
+  const shopperDetailsData = useMemo(
+    () => shopperDetails ?? shopperDetailsDummyData.data[0],
+    [shopperDetails]
+  );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalActiveTab, setModalActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (shopperDetails) {
-      setShopperDetailsData(shopperDetails);
-    } else {
-      setShopperDetailsData(shopperDetailsDummyData.data[0]);
-    }
-  }, [shopperDetails]);
-
-  useEffect(() => {
-    if (activeContentShopper?.content?.id && accountDetails?.id && accountDetails?.company_id) {
+    const shopperId = activeContentShopper?.content?.id;
+    if (shopperId && accountDetails?.id && accountDetails?.company_id) {
       getShopperDetails({
         account_id: +accountDetails.id,
         company_id: +accountDetails.company_id,
-        shopper_id: +activeContentShopper.content.id,
-        shopper_name: activeContentShopper.content.name ?? '',  
+        shopper_id: +shopperId,
+        shopper_name: activeContentShopper.content.name ?? '',
       });
     }
-  }, [activeContentShopper, accountDetails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeContentShopper?.content?.id, accountDetails?.id]);
 
   if (shopperDetailsLoading) {
     return (
@@ -63,7 +61,6 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
     return (
       <>
         <Collapse
-          defaultActiveKey={['1']}
           items={[
             {
               key: '1',
@@ -71,7 +68,7 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
                 <div className="flex items-center gap-2">
                   <FileText size={18} className="text-blue-500" />
                   <span style={{ fontSize: '16px', fontWeight: 500 }}>
-                    {activeContentShopper?.content?.name || 'Shopper Group'}
+                    {activeContentShopper?.content?.name || 'Shopper Group'} Details
                   </span>
                 </div>
               ),
@@ -120,108 +117,18 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
               ),
             },
           ]}
+          accordion
         />
 
-        {/* Enhanced Modal with Tabs */}
-        <Modal
-          title={`${activeContentShopper?.content?.name || 'Shopper'} Details`}
+        <ShopperDetailsModal
           open={isModalVisible}
-          onCancel={() => setIsModalVisible(false)}
-          footer={null}
-          width={900}
-          centered
-        >
-          <Tabs
-            activeKey={modalActiveTab}
-            onChange={setModalActiveTab}
-            items={[
-              {
-                key: 'behavior',
-                label: shopperDetailsData?.ui_template.props.primaryBtnText || 'Behavior',
-                children: (
-                  <div className="p-4">
-                    {shopperDetailsData?.ui_template.props.data.problemSS &&
-                      shopperDetailsData.ui_template.props.data.problemSS.length > 0 ? (
-                      <Carousel
-                        arrows={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                        dots={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                        autoplay={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                      >
-                        {shopperDetailsData.ui_template.props.data.problemSS.map(
-                          (screenshot, index) => (
-                            <div key={index} className="text-center">
-                              <Image
-                                src={screenshot.url}
-                                alt={screenshot.title || `Problem Screenshot ${index + 1}`}
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '500px',
-                                  objectFit: 'contain',
-                                }}
-                                preview={false}
-                              />
-                              {screenshot.title && (
-                                <Text className="block mt-2 text-gray-600">
-                                  {screenshot.title}
-                                </Text>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </Carousel>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Text type="secondary">No screenshots available for shopper behavior</Text>
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: 'solution',
-                label: shopperDetailsData?.ui_template.props.outlinedBtnText || 'Solutions',
-                children: (
-                  <div className="p-4">
-                    {shopperDetailsData?.ui_template.props.data.solutionSS &&
-                      shopperDetailsData.ui_template.props.data.solutionSS.length > 0 ? (
-                      <Carousel
-                        arrows={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                        dots={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                        autoplay={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                      >
-                        {shopperDetailsData.ui_template.props.data.solutionSS.map(
-                          (screenshot, index) => (
-                            <div key={index} className="text-center">
-                              <Image
-                                src={screenshot.url}
-                                alt={screenshot.title || `Solution Screenshot ${index + 1}`}
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '500px',
-                                  objectFit: 'contain',
-                                }}
-                                preview={false}
-                              />
-                              {screenshot.title && (
-                                <Text className="block mt-2 text-gray-600">
-                                  {screenshot.title}
-                                </Text>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </Carousel>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Text type="secondary">No screenshots available for solution</Text>
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Modal>
+          onClose={() => setIsModalVisible(false)}
+          shopperName={activeContentShopper?.content?.name}
+          activeKey={modalActiveTab}
+          onChange={setModalActiveTab}
+          shopperDetailsData={shopperDetailsData}
+          includeOverview={false}
+        />
       </>
     );
   }
@@ -296,120 +203,15 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
           ))}
         </Card>
 
-        {/* Enhanced Modal with Tabs */}
-        <Modal
-          title={`${activeContentShopper?.content?.name || 'Shopper'} Details`}
+        <ShopperDetailsModal
           open={isModalVisible}
-          onCancel={() => setIsModalVisible(false)}
-          footer={null}
-          width={900}
-          centered
-        >
-          <Tabs
-            activeKey={modalActiveTab}
-            onChange={setModalActiveTab}
-            items={[
-              {
-                key: 'overview',
-                label: 'Overview',
-                children: (
-                  <div className="p-4">
-                    {shopperDetailsData?.ui_template.props.data.overview.map((item) => (
-                      <div key={item.header} className="mb-4">
-                        <Title level={5}>{item.header}</Title>
-                        <Text>{item.description}</Text>
-                      </div>
-                    ))}
-                  </div>
-                ),
-              },
-              {
-                key: 'behavior',
-                label: shopperDetailsData?.ui_template.props.primaryBtnText || 'Behavior',
-                children: (
-                  <div className="p-4">
-                    {shopperDetailsData?.ui_template.props.data.problemSS &&
-                      shopperDetailsData.ui_template.props.data.problemSS.length > 0 ? (
-                      <Carousel
-                        arrows={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                        dots={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                        autoplay={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                      >
-                        {shopperDetailsData.ui_template.props.data.problemSS.map(
-                          (screenshot, index) => (
-                            <div key={index} className="text-center">
-                              <Image
-                                src={screenshot.url}
-                                alt={screenshot.title || `Problem Screenshot ${index + 1}`}
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '500px',
-                                  objectFit: 'contain',
-                                }}
-                                preview={false}
-                              />
-                              {screenshot.title && (
-                                <Text className="block mt-2 text-gray-600">
-                                  {screenshot.title}
-                                </Text>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </Carousel>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Text type="secondary">No screenshots available for shopper behavior</Text>
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: 'solution',
-                label: shopperDetailsData?.ui_template.props.outlinedBtnText || 'Solutions',
-                children: (
-                  <div className="p-4">
-                    {shopperDetailsData?.ui_template.props.data.solutionSS &&
-                      shopperDetailsData.ui_template.props.data.solutionSS.length > 0 ? (
-                      <Carousel
-                        arrows={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                        dots={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                        autoplay={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                      >
-                        {shopperDetailsData.ui_template.props.data.solutionSS.map(
-                          (screenshot, index) => (
-                            <div key={index} className="text-center">
-                              <Image
-                                src={screenshot.url}
-                                alt={screenshot.title || `Solution Screenshot ${index + 1}`}
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '500px',
-                                  objectFit: 'contain',
-                                }}
-                                preview={false}
-                              />
-                              {screenshot.title && (
-                                <Text className="block mt-2 text-gray-600">
-                                  {screenshot.title}
-                                </Text>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </Carousel>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Text type="secondary">No screenshots available for solution</Text>
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </Modal>
+          onClose={() => setIsModalVisible(false)}
+          shopperName={activeContentShopper?.content?.name}
+          activeKey={modalActiveTab}
+          onChange={setModalActiveTab}
+          shopperDetailsData={shopperDetailsData}
+          includeOverview={true}
+        />
       </>
     );
   }
@@ -456,109 +258,17 @@ const ShopperDetails: React.FC<ShopperDetailsProps> = ({ compact = false, displa
         </div>
       </Card>
 
-      {/* Modal for legacy mode */}
-      <Modal
-        title={`${activeContentShopper?.content?.name || 'Shopper'} Details`}
+      <ShopperDetailsModal
         open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        footer={null}
-        width={900}
-        centered
-      >
-        <Tabs
-          activeKey={modalActiveTab}
-          onChange={setModalActiveTab}
-          items={[
-
-            {
-              key: 'behavior',
-              label: shopperDetailsData?.ui_template.props.primaryBtnText || 'Behavior',
-              children: (
-                <div className="p-4">
-                  {shopperDetailsData?.ui_template.props.data.problemSS &&
-                    shopperDetailsData.ui_template.props.data.problemSS.length > 0 ? (
-                    <Carousel
-                      arrows={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                      dots={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                      autoplay={shopperDetailsData.ui_template.props.data.problemSS.length > 1}
-                    >
-                      {shopperDetailsData.ui_template.props.data.problemSS.map(
-                        (screenshot, index) => (
-                          <div key={index} className="text-center">
-                            <Image
-                              src={screenshot.url}
-                              alt={screenshot.title || `Problem Screenshot ${index + 1}`}
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '500px',
-                                objectFit: 'contain',
-                              }}
-                              preview={false}
-                            />
-                            {screenshot.title && (
-                              <Text className="block mt-2 text-gray-600">
-                                {screenshot.title}
-                              </Text>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </Carousel>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Text type="secondary">No screenshots available for shopper behavior</Text>
-                    </div>
-                  )}
-                </div>
-              ),
-            },
-            {
-              key: 'solution',
-              label: shopperDetailsData?.ui_template.props.outlinedBtnText || 'Solutions',
-              children: (
-                <div className="p-4">
-                  {shopperDetailsData?.ui_template.props.data.solutionSS &&
-                    shopperDetailsData.ui_template.props.data.solutionSS.length > 0 ? (
-                    <Carousel
-                      arrows={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                      dots={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                      autoplay={shopperDetailsData.ui_template.props.data.solutionSS.length > 1}
-                    >
-                      {shopperDetailsData.ui_template.props.data.solutionSS.map(
-                        (screenshot, index) => (
-                          <div key={index} className="text-center">
-                            <Image
-                              src={screenshot.url}
-                              alt={screenshot.title || `Solution Screenshot ${index + 1}`}
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '500px',
-                                objectFit: 'contain',
-                              }}
-                              preview={false}
-                            />
-                            {screenshot.title && (
-                              <Text className="block mt-2 text-gray-600">
-                                {screenshot.title}
-                              </Text>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </Carousel>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Text type="secondary">No screenshots available for solution</Text>
-                    </div>
-                  )}
-                </div>
-              ),
-            },
-          ]}
-        />
-      </Modal>
+        onClose={() => setIsModalVisible(false)}
+        shopperName={activeContentShopper?.content?.name}
+        activeKey={modalActiveTab}
+        onChange={setModalActiveTab}
+        shopperDetailsData={shopperDetailsData}
+        includeOverview={false}
+      />
     </>
   );
 };
 
-export default ShopperDetails;
+export default React.memo(ShopperDetails);

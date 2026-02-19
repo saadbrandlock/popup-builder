@@ -45,12 +45,12 @@ export const OnboardingPreview: React.FC<OnboardingPreviewProps> = ({
     error,
     contentFields,
   } = useClientFlowStore();
-  const { getCleintTemplatesData, getContentFieldsWithContent } = useClientFlow();
+  const { getClientTemplatesData, getContentFieldsWithContent } = useClientFlow();
   const { clientTemplateDetailsLoading } = useLoadingStore();
 
   useEffect(() => {
     if (accountDetails && !clientData) {
-      getCleintTemplatesData(accountDetails.id);
+      getClientTemplatesData(accountDetails.id);
     }
     if (!contentFields.length && accountDetails) {
       getContentFieldsWithContent(accountDetails.id);
@@ -95,7 +95,7 @@ export const OnboardingPreview: React.FC<OnboardingPreviewProps> = ({
               domain={accountDetails?.domain}
               onRefresh={() => {
                 if (accountDetails) {
-                  getCleintTemplatesData(accountDetails.id);
+                  getClientTemplatesData(accountDetails.id);
                 }
               }}
               loading={clientTemplateDetailsLoading}

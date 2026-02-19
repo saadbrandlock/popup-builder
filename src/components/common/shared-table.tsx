@@ -15,7 +15,7 @@ interface SharedTemplateTableProps<T extends object> {
   dataSource: T[];
   loading: boolean;
   pagination: TablePaginationConfig;
-  rowKey: keyof T | string;
+  rowKey: keyof T | string | ((record: T, index?: number) => string);
   onChange: TableProps<T>['onChange'];
   title?: string;
   filters?: FilterComponent[];
@@ -126,7 +126,7 @@ function SharedTemplateTable<T extends object>({
       {tableTitle}
       <Table<T>
         columns={columns}
-        rowKey={rowKey as string}
+        rowKey={rowKey as TableProps<T>['rowKey']}
         dataSource={dataSource}
         pagination={pagination}
         loading={loading}

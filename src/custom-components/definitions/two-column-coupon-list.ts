@@ -73,10 +73,11 @@ function renderTwoColumnCouponList(props: Record<string, unknown>): string {
 
         <!-- Action button -->
         <a
-          id="tcl-item-${i}-btn"
+          id="tcl-item-${i}-btn coupon_button"
           class="tcl-btn"
           data-field="cta"
           data-action="save-coupon"
+          data-field-id="template__coupon-apply-button"
           data-coupon-index="${i}"
           href="#"
           style="flex-shrink:0; background:${buttonColor}; color:${buttonTextColor}; border:none; padding:10px 22px; border-radius:8px; font-size:13px; font-weight:700; text-align:center; text-decoration:none; letter-spacing:0.02em; line-height:1;"
@@ -89,10 +90,6 @@ function renderTwoColumnCouponList(props: Record<string, unknown>): string {
     <style>
       .tcl-root { box-sizing: border-box; max-width: 100%; }
       .tcl-root * { box-sizing: border-box; }
-      @media (max-width: 480px) {
-        .tcl-item { flex-wrap: wrap !important; }
-        .tcl-btn { margin-top: 8px; width: 100% !important; }
-      }
     </style>
     <div
       data-component="two-column-coupon-list"
@@ -100,7 +97,7 @@ function renderTwoColumnCouponList(props: Record<string, unknown>): string {
       data-coupon-count="${items.length}"
       id="tcl-root"
       class="tcl-root"
-      style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:${bgColor}; padding:16px; box-sizing:border-box; max-width:100%;"
+      style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:${bgColor}; box-sizing:border-box; max-width:100%;"
     >
       ${safeTitle ? `
       <h3

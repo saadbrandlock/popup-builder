@@ -1,24 +1,21 @@
 import React, { useEffect, useMemo } from 'react';
-import { Card, Row, Col, Alert, Spin } from 'antd';
+import { Spin, Row, Col } from 'antd';
 
 import { PopupOnlyView, BrowserPreviewModal } from '../../../components/common';
 import { useClientFlowStore } from '../../../stores/clientFlowStore';
 import FeedbackForm from '../components/feedback-form';
 import { useGenericStore } from '@/stores/generic.store';
-import ReviewActions from '../components/review-actions';
-import { cn } from '@/lib/utils';
 import { getTemplatesForDevice, getTemplateOptionLabels } from '../utils/template-filters';
-import { TemplateReviewSelector } from '../components/template-review-selector';
+import { TemplateTabsHeader } from '../components/template-tabs-header';
+import { Eye as EyeIcon } from 'lucide-react';
 
 /**
  * MobileReview - Step 2 - Mobile review screen
  * Shows popup preview in mobile viewport. When multiple templates exist (as grouped by admin), user selects which template to review.
  */
-interface MobileReviewProps { }
-
-export const MobileReview: React.FC<MobileReviewProps> = ({ }) => {
+export const MobileReview: React.FC = () => {
   const { accountDetails, navigate, browserPreviewModalOpen, actions: genericActions } = useGenericStore();
-  const { clientData, actions, selectedReviewTemplateId } = useClientFlowStore();
+  const { clientData, actions, selectedReviewTemplateId, stepStatuses } = useClientFlowStore();
 
   const mobileTemplates = useMemo(() => getTemplatesForDevice(clientData, 'mobile'), [clientData]);
   const showTemplateSelector = mobileTemplates.length > 1;
@@ -34,92 +31,110 @@ export const MobileReview: React.FC<MobileReviewProps> = ({ }) => {
 
   useEffect(() => {
     if (template) actions.setSelectedTemplate(template);
-  }, [template, actions]);
-
-  const onEditTemplate = () => {
-    if (template) {
-      navigate(
-        `/coupon-builder-v2/user-template-editor/${template.template_id}`
-      );
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
 
   const onTemplateChange = (value: string) => {
-    actions.setSelectedReviewTemplateId(value);
+    actions.setSelectedReviewTemplateId(value)
   };
 
   return (
     <>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={6}>
-            <Card>
-            <FeedbackForm type="mobile" />
-            </Card>
-          </Col>
-          <Col xs={24} md={18}>
-            <Row gutter={[16, 16]} className="relative" align={'middle'}>
-              <Col xs={24} className={cn('transition-all duration-300 ease-in-out')}>
-                <Alert
-                  message="You're viewing one of your templates (grouped as set by your admin). Use Edit to change this template's design. In step 3 you can set copy per shopper group."
-                  type="info"
-                  showIcon
-                  className="transition-all duration-300 ease-in-out"
-                />
-              </Col>
+      <section className="center-content">
+        <div className="info-banner info">
+          <span>
+            Review how your popup appears on <strong>mobile devices</strong>. Ensure text is readable and buttons are easy to tap.
+          </span>
+        </div>
 
-              <Col xs={24}>
-                <Card>
-                  {showTemplateSelector && (
-                    <div className="mb-4">
-                      <TemplateReviewSelector
-                        templates={mobileTemplates}
-                        value={selectedTemplateId}
-                        onChange={onTemplateChange}
-                        // label="Select template to review:"
-                        size="middle"
-                      />
-                    </div>
-                  )}
+        {/* Template tabs + header (driven by current mobile templates) */}
+        {showTemplateSelector && (
+          <TemplateTabsHeader
+            templates={mobileTemplates}
+            selectedTemplateId={selectedTemplateId}
+            onChange={onTemplateChange}
+            stepStatuses={stepStatuses}
+            designStepKey="mobileDesign"
+          />
+        )}
+
+        <div className="template-header">
+          <div className="template-info">
+            <h4>{template ? getTemplateOptionLabels(template).name : 'Base Template'}</h4>
+            <p>
+              {template
+                ? getTemplateOptionLabels(template).descriptionFull ||
+                  'Mobile preview — how your popup appears on phones'
+                : 'Mobile preview — how your popup appears on phones'}
+            </p>
+          </div>
+          <div className="template-actions">
+            <button
+              type="button"
+              className="cf-btn cf-btn-secondary"
+              onClick={() => genericActions.setBrowserPreviewModalOpen(true)}
+            >
+              <EyeIcon size={16} />
+              Preview Template
+            </button>
+          </div>
+        </div>
+
+        <Row gutter={[20, 20]} align="stretch">
+          {/* Feedback column */}
+          <Col xs={24} lg={8}>
+            <div className="card h-min">
+              <div className="card-header !block">
+                <div className="flex justify-between w-full">
+                  <h3>Mobile Feedback</h3>
                   {template && (
-                    <div className="mb-4 flex gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {getTemplateOptionLabels(template).name}
-                        </p>
-                        {getTemplateOptionLabels(template).descriptionFull && (
-                          <p className="mt-0.5 text-sm text-gray-500">
-                            {getTemplateOptionLabels(template).descriptionFull}
-                          </p>
-                        )}
-                      </div>
-                      <div className="shrink-0">
-                        <ReviewActions
-                          type="mobile"
-                          goToEditTemplate={onEditTemplate}
-                          inline
-                        />
-                      </div>
-                    </div>
+                    <span className="info-badge info">
+                      Mobile · {getTemplateOptionLabels(template).name}
+                    </span>
                   )}
-                  <div className="w-full">
-                    {accountDetails && template ? (
-                      <PopupOnlyView
-                        viewport="mobile"
-                        popupTemplate={[template]}
-                        className="shadow-md"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-96"><Spin size="large" /></div>
-                    )}
-                  </div>
-                </Card>
-              </Col>
-            </Row>
+                </div>
+                <p className='!text-xs !text-gray-500 mt-2'>
+                  Share your thoughts on the mobile template design.
+                </p>
+              </div>
+              <div className="card-body">
+                <FeedbackForm
+                type="mobile"
+                templateAvailable={!!template}
+                templateId={template?.template_id}
+              />
+              </div>
+            </div>
           </Col>
 
+          {/* Preview column */}
+          <Col xs={24} lg={16}>
+            <div className="card h-full">
+              <div
+                className="card-header"
+                style={{ background: 'linear-gradient(135deg,#F8FAFC,#F0F4FF)' }}
+              >
+                <h3>Mobile Preview</h3>
+              </div>
+              <div className="card-body !p-0">
+                <div className="preview-container-dark">
+                  {accountDetails && template ? (
+                    <PopupOnlyView
+                      viewport="mobile"
+                      popupTemplate={[template]}
+                      className="shadow-md"
+                    />
+                  ) : (
+                    <Spin size="large" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </Col>
         </Row>
+      </section>
 
-        {accountDetails && template && (
+      {accountDetails && template && (
         <BrowserPreviewModal
           open={browserPreviewModalOpen}
           onClose={() => genericActions.setBrowserPreviewModalOpen(false)}

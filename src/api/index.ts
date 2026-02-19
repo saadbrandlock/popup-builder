@@ -6,6 +6,8 @@ import { DevicesAPI } from './services/DevicesAPI';
 import { ContentAPI } from './services/ContentAPI';
 import { TemplateFieldsAPI } from './services/TemplateFieldsAPI';
 import { BaseTemplateCategoriesAPI } from './services/BaseTemplateCategoriesAPI';
+import { CouponAPI } from './services/CouponAPI';
+import { FeedbackAPI } from './services/FeedbackAPI';
 
 /**
  * API Factory - Creates API service instances with the provided apiClient
@@ -15,11 +17,13 @@ export class APIFactory {
   private apiClient: AxiosInstance;
   private templatesAPI: TemplatesAPI | null = null;
   private devicesAPI: DevicesAPI | null = null;
-  private ComponentsAPI: ComponentsAPI | null = null;
+  private componentsAPI: ComponentsAPI | null = null;
   private assetsAPI: AssetsAPI | null = null;
   private contentAPI: ContentAPI | null = null;
   private templateFieldsAPI: TemplateFieldsAPI | null = null;
   private baseTemplateCategoriesAPI: BaseTemplateCategoriesAPI | null = null;
+  private couponAPI: CouponAPI | null = null;
+  private feedbackAPI: FeedbackAPI | null = null;
 
   constructor(apiClient: AxiosInstance) {
     this.apiClient = apiClient;
@@ -46,10 +50,10 @@ export class APIFactory {
   }
 
   get components(): ComponentsAPI {
-    if (!this.ComponentsAPI) {
-      this.ComponentsAPI = new ComponentsAPI(this.apiClient);
+    if (!this.componentsAPI) {
+      this.componentsAPI = new ComponentsAPI(this.apiClient);
     }
-    return this.ComponentsAPI;
+    return this.componentsAPI;
   }
 
   get assets(): AssetsAPI {
@@ -82,6 +86,20 @@ export class APIFactory {
     return this.baseTemplateCategoriesAPI;
   }
 
+  get coupons(): CouponAPI {
+    if (!this.couponAPI) {
+      this.couponAPI = new CouponAPI(this.apiClient);
+    }
+    return this.couponAPI;
+  }
+
+  get feedback(): FeedbackAPI {
+    if (!this.feedbackAPI) {
+      this.feedbackAPI = new FeedbackAPI(this.apiClient);
+    }
+    return this.feedbackAPI;
+  }
+
   // Add more API services here as needed
   // get users(): UsersAPI { ... }
   // get content(): ContentAPI { ... }
@@ -103,6 +121,8 @@ export { DevicesAPI } from './services/DevicesAPI';
 export { ContentAPI } from './services/ContentAPI';
 export { TemplateFieldsAPI } from './services/TemplateFieldsAPI';
 export { BaseTemplateCategoriesAPI } from './services/BaseTemplateCategoriesAPI';
+export { CouponAPI } from './services/CouponAPI';
+export { FeedbackAPI } from './services/FeedbackAPI';
 
 // Re-export types for convenience
 export type {

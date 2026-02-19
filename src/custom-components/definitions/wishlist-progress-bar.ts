@@ -6,9 +6,6 @@ function escapePropsForAttribute(props: Record<string, unknown>): string {
 
 function renderWishlistProgressBar(props: Record<string, unknown>): string {
   const {
-    currentAmount = 390,
-    targetAmount = 530,
-    discountText = '10% OFF',
     barColor = '#4285F4',
     trackColor = '#E0E0E0',
     bgColor = '#FFFFFF',
@@ -18,14 +15,6 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
     unlockLabel = 'savings',
     footerText = '',
   } = props as Record<string, number | string>;
-
-  const current = Number(currentAmount);
-  const target = Number(targetAmount);
-  const remaining = Math.max(0, target - current);
-  const percent = target > 0 ? Math.min((current / target) * 100, 100) : 0;
-  // Clamp the pill so it never overlaps the end circle (reserve ~60px for it)
-  // The bar itself stops short of the circle, so pill % is relative to bar width
-  const clampedPercent = Math.min(percent, 100);
 
   const html = `
     <style>
@@ -50,9 +39,10 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
       <p
         id="wpb-head"
         data-field="heading"
+        data-field-id="template__heading-main"
         class="wpb-head"
         style="margin:0 0 20px; color:${textColor}; font-size:15px; font-weight:600; text-align:center;"
-      >Add ${currency}${remaining} more to unlock ${String(unlockLabel)}</p>
+      >Add ${currency}XXX more to unlock ${String(unlockLabel)}</p>
 
       <!-- Progress row: bar + circle side by side -->
       <div
@@ -70,13 +60,13 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
           <div
             id="wpb-pill-wrap"
             data-field="pill"
-            style="position:absolute; left:${clampedPercent}%; top:0; transform:translateX(-50%);"
+            style="position:absolute; left:40%; top:0; transform:translateX(-50%);"
           >
             <div
               id="wpb-pill"
               class="wpb-pill"
               style="background:${barColor}; color:#fff; padding:5px 14px; border-radius:999px; font-size:14px; font-weight:700; white-space:nowrap; box-shadow:0 2px 8px rgba(66,133,244,0.30);"
-            >${currency}${current}</div>
+            >${currency}XXX</div>
             <div
               style="width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid ${barColor}; margin:0 auto;"
             ></div>
@@ -91,8 +81,8 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
             <div
               id="wpb-fill"
               data-field="fill"
-              data-percent="${Math.round(percent)}"
-              style="width:${clampedPercent}%; background:${barColor}; height:100%; border-radius:999px; min-width:4px;"
+              data-percent="40"
+              style="width:40%; background:${barColor}; height:100%; border-radius:999px; min-width:4px;"
             ></div>
           </div>
 
@@ -101,7 +91,7 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
             id="wpb-target"
             data-field="target-label"
             style="margin:6px 0 0; text-align:right; color:${secondaryTextColor}; font-size:13px; font-weight:600;"
-          >${currency}${target}</p>
+          >${currency}XXX</p>
         </div>
 
         <!-- Discount circle (fixed size, never overlapped) -->
@@ -116,7 +106,7 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
             data-field="discount-text"
             class="wpb-circle-text"
             style="color:#fff; font-size:11px; font-weight:800; text-align:center; line-height:1.2;"
-          >${String(discountText).replace(/\s/g, '<br/>')}</span>
+          >XX% OFF</span>
         </div>
       </div>
 
@@ -125,6 +115,7 @@ function renderWishlistProgressBar(props: Record<string, unknown>): string {
       <p
         id="wpb-footer"
         data-field="footer"
+        data-field-id="template__sub-heading-main"
         style="margin:16px 0 0; color:${secondaryTextColor}; font-size:13px; text-align:center; line-height:1.5;"
       >${String(footerText)}</p>` : ''}
     </div>
@@ -139,9 +130,9 @@ registerComponent({
   category: 'engagement',
   icon: '🎯',
   props: [
-    { name: 'currentAmount', label: 'Current Amount', type: 'number', defaultValue: 390, min: 0, max: 10000 },
-    { name: 'targetAmount', label: 'Target Amount', type: 'number', defaultValue: 530, min: 1, max: 10000 },
-    { name: 'discountText', label: 'Discount Text', type: 'text', defaultValue: '10% OFF' },
+    { name: 'currentAmount', label: 'Current Amount', type: 'text', defaultValue: 'XXX'},
+    { name: 'targetAmount', label: 'Target Amount', type: 'text', defaultValue: 'XXX'},
+    { name: 'discountText', label: 'Discount Text', type: 'text', defaultValue: 'XX% OFF' },
     { name: 'barColor', label: 'Accent Color', type: 'color', defaultValue: '#4285F4' },
     { name: 'trackColor', label: 'Track Color', type: 'color', defaultValue: '#E0E0E0' },
     { name: 'bgColor', label: 'Background Color', type: 'color', defaultValue: '#FFFFFF' },
@@ -152,9 +143,9 @@ registerComponent({
     { name: 'footerText', label: 'Footer Text (optional)', type: 'text', defaultValue: '' },
   ],
   defaultProps: {
-    currentAmount: 390,
-    targetAmount: 530,
-    discountText: '10% OFF',
+    currentAmount: 'XXX',
+    targetAmount: 'XXX',
+    discountText: 'XX% OFF',
     barColor: '#4285F4',
     trackColor: '#E0E0E0',
     bgColor: '#FFFFFF',

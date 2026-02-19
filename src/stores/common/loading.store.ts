@@ -11,8 +11,10 @@ type LoadingState = {
   contentListingLoading: boolean;
   contentActionLoading: boolean;
   contentSubDataLoading: boolean;
+  contentSubmitLoading: boolean;
   shopperDetailsLoading: boolean;
   clientTemplateDetailsLoading: boolean;
+  stepApprovalLoading: boolean;
   // Builder autosave loading states
   builderAutosaving: boolean;
   reminderTabAutosaving: boolean;
@@ -30,8 +32,10 @@ type LoadingActions = {
     setContentListingLoading: (loading: boolean) => void;
     setContentActionLoading: (loading: boolean) => void;
     setContentSubDataLoading: (loading: boolean) => void;
+    setContentSubmitLoading: (loading: boolean) => void;
     setShopperDetailsLoading: (loading: boolean) => void;
     setClientTemplateDetailsLoading: (loading: boolean) => void;
+    setStepApprovalLoading: (loading: boolean) => void;
     // Builder autosave actions
     setBuilderAutosaving: (loading: boolean) => void;
     setReminderTabAutosaving: (loading: boolean) => void;
@@ -49,8 +53,10 @@ export const useLoadingStore = create<LoadingState & LoadingActions>((set) => ({
   contentListingLoading: false,
   contentActionLoading: false,
   contentSubDataLoading: false,
+  contentSubmitLoading: false,
   shopperDetailsLoading: false,
   clientTemplateDetailsLoading: false,
+  stepApprovalLoading: false,
   // Builder autosave initial states
   builderAutosaving: false,
   reminderTabAutosaving: false,
@@ -72,10 +78,14 @@ export const useLoadingStore = create<LoadingState & LoadingActions>((set) => ({
       set({ contentActionLoading: loading }),
     setContentSubDataLoading: (loading: boolean) =>
       set({ contentSubDataLoading: loading }),
+    setContentSubmitLoading: (loading: boolean) =>
+      set({ contentSubmitLoading: loading }),
     setShopperDetailsLoading: (loading: boolean) =>
       set({ shopperDetailsLoading: loading }),
     setClientTemplateDetailsLoading: (loading: boolean) =>
       set({ clientTemplateDetailsLoading: loading }),
+    setStepApprovalLoading: (loading: boolean) =>
+      set({ stepApprovalLoading: loading }),
     // Builder autosave actions
     setBuilderAutosaving: (loading: boolean) =>
       set({ builderAutosaving: loading }),

@@ -111,7 +111,9 @@ export const useContent = () => {
     loadingActions.setContentSubDataLoading(true);
     try {
       const response = await api.templateFields.getTemplateFields();
-      actions.setFields(response.map((field) => ({key: field.field, value: +field.id})));
+      actions.setFields(
+        response.map((field) => ({ key: field.field, value: +field.id }))
+      );
     } catch (error) {
       console.error('Error getting fields:', error);
     } finally {
@@ -119,7 +121,78 @@ export const useContent = () => {
     }
   };
 
+  // =====================
+  // = Grouped Content Methods =
+  // =====================
+
+  // Fetch grouped content
+  const getContentGroups = async () => {
+    if (!api) return;
+    loadingActions.setContentListingLoading(true);
+    try {
+      const response = await api.content.getContentGrouped();
+      actions.setContentGroups(response.results);
+      actions.setPagination({
+        current: response.page,
+        pageSize: response.limit,
+        total: response.count,
+      });
+    } catch (error) {
+      console.error('Error fetching content groups:', error);
+    } finally {
+      loadingActions.setContentListingLoading(false);
+    }
+  };
+
+  // Create content group
+  const createContentGroup = async (data: any) => {
+    if (!api) return;
+    loadingActions.setContentActionLoading(true);
+    try {
+      const response = await api.content.createContentGroup(data);
+      await getContentGroups(); // Refresh list
+      return response;
+    } catch (error) {
+      console.error('Error creating content group:', error);
+      throw error;
+    } finally {
+      loadingActions.setContentActionLoading(false);
+    }
+  };
+
+  // Update content group
+  const updateContentGroup = async (headingId: number, data: any) => {
+    if (!api) return;
+    loadingActions.setContentActionLoading(true);
+    try {
+      const response = await api.content.updateContentGroup(headingId, data);
+      await getContentGroups(); // Refresh list
+      return response;
+    } catch (error) {
+      console.error('Error updating content group:', error);
+      throw error;
+    } finally {
+      loadingActions.setContentActionLoading(false);
+    }
+  };
+
+  // Delete content group
+  const deleteContentGroup = async (headingId: number) => {
+    if (!api) return;
+    loadingActions.setContentActionLoading(true);
+    try {
+      await api.content.deleteContentGroup(headingId);
+      await getContentGroups(); // Refresh list
+    } catch (error) {
+      console.error('Error deleting content group:', error);
+      throw error;
+    } finally {
+      loadingActions.setContentActionLoading(false);
+    }
+  };
+
   return {
+    // Existing methods
     getContent,
     getContentById,
     createContent,
@@ -127,5 +200,11 @@ export const useContent = () => {
     deleteContent,
     getIndustries,
     getFields,
+
+    // NEW: Grouped content methods
+    getContentGroups,
+    createContentGroup,
+    updateContentGroup,
+    deleteContentGroup,
   };
 };

@@ -38,27 +38,47 @@ export const BaseTemplateCard: React.FC<BaseTemplateCardProps> = ({
 
   // Convert builder_state_json to HTML when preview modal opens (same parser as template listing flow)
   useEffect(() => {
+    let cancelled = false;
+
     if (!previewModalVisible) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     const designJson = template.builder_state_json;
     if (!designJson || !validateUnlayerDesign(designJson)) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     setLoadingConversion(true);
     convertUnlayerJsonToHtml(designJson)
       .then((html) => {
-        setPreviewHtml(html);
+        if (!cancelled) {
+          setPreviewHtml(html);
+        }
       })
       .catch((err) => {
         console.error('Failed to convert builder_state_json to HTML for preview:', err);
-        setPreviewHtml(null);
+        if (!cancelled) {
+          setPreviewHtml(null);
+        }
       })
       .finally(() => {
-        setLoadingConversion(false);
+        if (!cancelled) {
+          setLoadingConversion(false);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [previewModalVisible, template.template_id, template.builder_state_json]);
 
   // Only pass templateId + htmlContent once preview HTML is ready so the hook never runs with null htmlContent
