@@ -5,7 +5,8 @@ export type FeedbackForStep =
   | 'desktop-review'
   | 'mobile-review'
   | 'content'
-  | 'copy-review';
+  | 'copy-review'
+  | 'all';
 
 export interface CBTemplateFeedbackThread {
   id: number;
@@ -40,7 +41,6 @@ export class FeedbackAPI extends BaseAPI {
       feedback_text: payload.feedbackText,
       feedback_for_step: payload.feedbackForStep ?? null,
       parent_feedback_id: payload.parentFeedbackId ?? null,
-      is_admin_response: payload.isAdminResponse ?? false,
     };
     return this.post<unknown>('/feedback', body);
   }

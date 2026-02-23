@@ -8,6 +8,7 @@ import { useGenericStore } from '@/stores/generic.store';
 import { getTemplatesForDevice, getTemplateOptionLabels } from '../utils/template-filters';
 import { TemplateTabsHeader } from '../components/template-tabs-header';
 import { Eye as EyeIcon } from 'lucide-react';
+import { StepInfoBanner } from '../components/StepInfoBanner';
 
 /**
  * MobileReview - Step 2 - Mobile review screen
@@ -41,11 +42,9 @@ export const MobileReview: React.FC = () => {
   return (
     <>
       <section className="center-content">
-        <div className="info-banner info">
-          <span>
-            Review how your popup appears on <strong>mobile devices</strong>. Ensure text is readable and buttons are easy to tap.
-          </span>
-        </div>
+        <StepInfoBanner
+          message={<>Review how your popup appears on <strong>mobile devices</strong>. Ensure text is readable and buttons are easy to tap.</>}
+        />
 
         {/* Template tabs + header (driven by current mobile templates) */}
         {showTemplateSelector && (

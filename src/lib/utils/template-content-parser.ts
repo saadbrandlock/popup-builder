@@ -315,17 +315,17 @@ export class TemplateContentParser {
   }
 
   /**
-   * Serialize document back to HTML string
-   * @param doc - The document to serialize
-   * @returns HTML string
+   * Serialize document back to HTML string.
+   * Returns the full document (including <head>) so that injected styles and
+   * scripts (e.g. reminder tab CSS/JS from useOptimizedHTMLMerger) are preserved.
    */
   private serializeDocument(doc: Document): string {
-    // Return just the body content for embedding
+    if (doc.documentElement) {
+      return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+    }
     if (doc.body) {
       return doc.body.innerHTML;
     }
-
-    // Fallback to full document
     return this.serializer.serializeToString(doc);
   }
 

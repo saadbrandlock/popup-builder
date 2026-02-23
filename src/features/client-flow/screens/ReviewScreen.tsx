@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Typography, Radio, Space, Select, Row, Col, Spin } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, MobileOutlined } from '@ant-design/icons';
-import { Clock, Computer, Users, Eye, CheckCircle2 } from 'lucide-react';
-import { BrowserPreview, BrowserPreviewSkeleton } from '../../../components/common';
+import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Clock, Users, Eye, CheckCircle2 } from 'lucide-react';
+import { BrowserPreview, BrowserPreviewSkeleton, DeviceToggle } from '../../../components/common';
 import { useClientFlowStore } from '@/stores/clientFlowStore';
 import { useGenericStore } from '@/stores/generic.store';
 import { ClientFlowData } from '@/types';
 import { getTemplatesForDevice, getTemplatesForDeviceAndShopper, getUniqueShoppersFromTemplates } from '../utils/template-filters';
 import { useClientFlow } from '../hooks/use-client-flow';
+import { buildContentMappingFromShopper } from '../utils/content-mapping';
+import { StepInfoBanner } from '../components/StepInfoBanner';
 
 const { Text } = Typography;
 
@@ -113,24 +115,84 @@ export const ReviewScreen: React.FC = () => {
     }
   };
 
-  // All 3 steps approved across all templates → enable Finalize button
-  const allStepsApproved = useMemo(() => {
-    if (!clientData?.length) return false;
-    return clientData.every((t) => {
-      const ts = stepStatuses[t.template_id];
-      return (
-        ts?.stepStatus?.desktopDesign?.status === 'approved' &&
-        ts?.stepStatus?.mobileDesign?.status === 'approved' &&
-        ts?.stepStatus?.templateCopy?.status === 'approved'
-      );
-    });
-  }, [clientData, stepStatuses]);
+  // Populate content + coupon data whenever the active shopper changes
+  // so BrowserPreview's content parser receives the correct field values.
+  useEffect(() => {
+    if (activeShopperId == null || !clientData?.length) {
+      actions.setContentFormData({});
+      actions.setSelectedCouponsData([]);
+      return;
+    }
+
+    const mapping = buildContentMappingFromShopper(clientData, activeShopperId);
+    actions.setContentFormData(mapping);
+
+    for (const tmpl of clientData) {
+      const shopper = tmpl.shoppers?.find((s) => s.id === activeShopperId);
+      if (shopper?.coupons?.length) {
+        actions.setSelectedCouponsData(
+          shopper.coupons.map((c) => ({
+            offerText: c.offer_heading,
+            subtext: c.offer_sub_heading || '',
+          }))
+        );
+        break;
+      }
+    }
+  }, [activeShopperId, clientData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear on unmount to avoid leaking into other steps
+  useEffect(() => {
+    return () => {
+      actions.setContentFormData({});
+      actions.setSelectedCouponsData([]);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Device-aware helpers — mirrors the same logic in ClientFlow.tsx.
+  // In a parent-child pair, the desktop template only has desktopDesign and the
+  // mobile template only has mobileDesign, so every() across all templates always
+  // returns false for each step. Filter to the relevant device first.
+  const isApproved = (templateId: string, key: string) =>
+    stepStatuses[templateId]?.stepStatus?.[key]?.status === 'approved';
+
+  const desktopTemplates = useMemo(
+    () => (clientData ?? []).filter(t => t.devices?.some((d: { device_type: string }) => d.device_type === 'desktop')),
+    [clientData]
+  );
+  const mobileTemplates = useMemo(
+    () => (clientData ?? []).filter(t => t.devices?.some((d: { device_type: string }) => d.device_type === 'mobile')),
+    [clientData]
+  );
+
+  const desktopApproved = useMemo(() =>
+    desktopTemplates.length > 0 && desktopTemplates.every(t => isApproved(t.template_id, 'desktopDesign')),
+  [desktopTemplates, stepStatuses]);
+
+  const mobileApproved = useMemo(() =>
+    mobileTemplates.length > 0 && mobileTemplates.every(t => isApproved(t.template_id, 'mobileDesign')),
+  [mobileTemplates, stepStatuses]);
+
+  const copyApproved = useMemo(() =>
+    !!clientData?.length && clientData.every(t => isApproved(t.template_id, 'templateCopy')),
+  [clientData, stepStatuses]);
+
+  // All 3 steps approved → enable Finalize button
+  const allStepsApproved = desktopApproved && mobileApproved && copyApproved;
 
   // Already sent for admin review — show success state instead of button
   const alreadyFinalized = useMemo(() => {
     if (!clientData?.length) return false;
     return clientData.every((t) => stepStatuses[t.template_id]?.templateStatus === 'admin-review');
   }, [clientData, stepStatuses]);
+
+  // Admin has approved and published — both "Sent for Admin Review" and "Approved by Admin" are complete
+  const isPublished = useMemo(() => {
+    if (!clientData?.length) return false;
+    return clientData.every(
+      (t) => t.staging_status === 'published' || t.template_status === 'published'
+    );
+  }, [clientData]);
 
   const handleFinalizeApproval = async () => {
     setIsFinalizing(true);
@@ -141,29 +203,12 @@ export const ReviewScreen: React.FC = () => {
     }
   };
 
-  // Individual step approval states (all templates must have each step approved)
-  const desktopApproved = useMemo(() =>
-    !!clientData?.length && clientData.every((t) => stepStatuses[t.template_id]?.stepStatus?.desktopDesign?.status === 'approved'),
-  [clientData, stepStatuses]);
-
-  const mobileApproved = useMemo(() =>
-    !!clientData?.length && clientData.every((t) => stepStatuses[t.template_id]?.stepStatus?.mobileDesign?.status === 'approved'),
-  [clientData, stepStatuses]);
-
-  const copyApproved = useMemo(() =>
-    !!clientData?.length && clientData.every((t) => stepStatuses[t.template_id]?.stepStatus?.templateCopy?.status === 'approved'),
-  [clientData, stepStatuses]);
-
   return (
     <>
       <section className="center-content">
-        {/* Info banner */}
-        <div className="info-banner info">
-          <span>
-            Your popup customization is under <strong>review</strong>. Preview how it will look once approved.
-            Use the shopper dropdown to view content for each group.
-          </span>
-        </div>
+        <StepInfoBanner
+          message={<>Your popup customization is under <strong>review</strong>. Preview how it will look once approved. Use the shopper dropdown to view content for each group.</>}
+        />
 
         <Row gutter={[20, 20]} align="stretch">
           {/* ========== LEFT COLUMN — Review status ========== */}
@@ -188,15 +233,15 @@ export const ReviewScreen: React.FC = () => {
                   <ProgressItem done={mobileApproved} active={!mobileApproved && desktopApproved} label="Mobile Design" />
                   <ProgressItem done={copyApproved} active={!copyApproved && desktopApproved && mobileApproved} label="Copy Review" />
 
-                  {/* Step 5: Sent for admin review */}
-                  <ProgressItem done={alreadyFinalized} active={allStepsApproved && !alreadyFinalized} label="Sent for Admin Review" />
+                  {/* Step 5: Sent for admin review — done when sent or when published */}
+                  <ProgressItem done={alreadyFinalized || isPublished} active={allStepsApproved && !alreadyFinalized && !isPublished} label="Sent for Admin Review" />
 
-                  {/* Step 6: Approved */}
-                  <ProgressItem done={false} label="Approved by Admin" />
+                  {/* Step 6: Approved by admin — done when template is published */}
+                  <ProgressItem done={isPublished} active={alreadyFinalized && !isPublished} label="Approved by Admin" />
                 </div>
 
-                {/* Estimated time — hide once sent to admin */}
-                {!alreadyFinalized && (
+                {/* Estimated time — hide once sent to admin or published */}
+                {!alreadyFinalized && !isPublished && (
                   <div className="mt-4 px-3 py-2.5 bg-blue-50/70 rounded-lg border border-blue-100">
                     <div className="flex items-start gap-2">
                       <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -214,24 +259,26 @@ export const ReviewScreen: React.FC = () => {
 
             {/* Finalize card — shown when all steps approved, replaces Submitted Details */}
             {allStepsApproved ? (
-              <div className={`rounded-xl border overflow-hidden shadow-sm mt-4 ${alreadyFinalized ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white'}`}>
-                <div className={`px-4 py-3.5 border-b ${alreadyFinalized ? 'border-green-100 bg-gradient-to-r from-green-50 to-emerald-50' : 'border-blue-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/60'}`}>
+              <div className={`rounded-xl border overflow-hidden shadow-sm mt-4 ${alreadyFinalized || isPublished ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white'}`}>
+                <div className={`px-4 py-3.5 border-b ${alreadyFinalized || isPublished ? 'border-green-100 bg-gradient-to-r from-green-50 to-emerald-50' : 'border-blue-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/60'}`}>
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm ${alreadyFinalized ? 'bg-green-500' : 'bg-blue-500'}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm ${alreadyFinalized || isPublished ? 'bg-green-500' : 'bg-blue-500'}`}>
                       <CheckCircleOutlined className="text-white text-xs" />
                     </div>
                     <span className="text-sm font-semibold text-gray-800">
-                      {alreadyFinalized ? 'Sent for Admin Review' : 'All Steps Approved!'}
+                      {isPublished ? 'Approved by Admin' : alreadyFinalized ? 'Sent for Admin Review' : 'All Steps Approved!'}
                     </span>
                   </div>
                 </div>
                 <div className="p-4">
                   <p className="text-xs text-gray-600 mb-4">
-                    {alreadyFinalized
-                      ? 'Your template has been submitted for admin review. You will be notified once it is approved.'
-                      : 'All design and content steps have been reviewed and approved. Finalize to submit your template for admin review.'}
+                    {isPublished
+                      ? 'Your template has been approved and published. It is now live.'
+                      : alreadyFinalized
+                        ? 'Your template has been submitted for admin review. You will be notified once it is approved.'
+                        : 'All design and content steps have been reviewed and approved. Finalize to submit your template for admin review.'}
                   </p>
-                  {!alreadyFinalized && (
+                  {!alreadyFinalized && !isPublished && (
                     <button
                       onClick={handleFinalizeApproval}
                       disabled={isFinalizing}
@@ -306,24 +353,7 @@ export const ReviewScreen: React.FC = () => {
                     )}
 
                     {/* Device toggle */}
-                    <Radio.Group
-                      value={selectedDevice}
-                      onChange={(e) => setSelectedDevice(e.target.value)}
-                      size="small"
-                    >
-                      <Radio.Button value="desktop">
-                        <Space>
-                          <Computer size={13} />
-                          Desktop
-                        </Space>
-                      </Radio.Button>
-                      <Radio.Button value="mobile">
-                        <Space>
-                          <MobileOutlined />
-                          Mobile
-                        </Space>
-                      </Radio.Button>
-                    </Radio.Group>
+                    <DeviceToggle value={selectedDevice} onChange={setSelectedDevice} />
                   </div>
                 </div>
               </div>

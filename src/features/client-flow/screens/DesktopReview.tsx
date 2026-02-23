@@ -7,6 +7,7 @@ import { useClientFlowStore } from '@/stores/clientFlowStore';
 import { getTemplatesForDevice, getTemplateOptionLabels } from '../utils/template-filters';
 import { TemplateTabsHeader } from '../components/template-tabs-header';
 import { Eye as EyeIcon } from 'lucide-react';
+import { StepInfoBanner } from '../components/StepInfoBanner';
 
 /**
  * DesktopReview - Step 1 - Desktop review screen
@@ -40,12 +41,9 @@ export const DesktopReview: React.FC = () => {
   return (
     <>
       <section className="center-content">
-        <div className="info-banner info">
-          <span>
-            Review the <strong>desktop</strong> version of your popup. Use tabs to switch templates.
-            Provide feedback on the left.
-          </span>
-        </div>
+        <StepInfoBanner
+          message={<>Review the <strong>desktop</strong> version of your popup. Use tabs to switch templates. Provide feedback on the left.</>}
+        />
 
         {/* Template tabs + header (driven by current desktop templates) */}
         {showTemplateSelector && (

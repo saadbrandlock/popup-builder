@@ -163,9 +163,36 @@ function processContent(
     content.values.html = processedText;
   }
 
-  // NOTE: Paragraphs with only textJson are NOT processed here
-  // They will keep merge tags and be processed during client preview using template-content-parser.ts
-  // This prevents breaking Unlayer's editor for paragraph elements
+  // When a merge tag is inserted via Unlayer's merge tag picker, it is stored in
+  // textJson (Lexical editor state) as a merge_tag node — the `text` field is left
+  // absent entirely. processTextContent never sees it, so no id-annotated span is
+  // ever written, and the client preview can't find the element.
+  // Fix: if `text` is absent but textJson contains {{field_id}}, synthesise the
+  // `text` field with the default value and injected ID so Unlayer exports the
+  // correct span. textJson is left untouched so the editor continues to show the
+  // merge tag placeholder when the admin reopens the template.
+  if (!content.values.text && content.values.textJson) {
+    try {
+      const textJsonStr =
+        typeof content.values.textJson === 'string'
+          ? content.values.textJson
+          : JSON.stringify(content.values.textJson);
+
+      const mergeTagMatch = /\{\{([^}]+)\}\}/.exec(textJsonStr);
+      if (mergeTagMatch) {
+        const fieldId = mergeTagMatch[1];
+        const templateField = templateFieldsMap.get(fieldId);
+        if (templateField) {
+          content.values.text = injectIdIntoElement(
+            templateField.default_field_value,
+            fieldId
+          );
+        }
+      }
+    } catch {
+      // Silently skip — textJson parse failure should not block the save
+    }
+  }
 }
 
 /**

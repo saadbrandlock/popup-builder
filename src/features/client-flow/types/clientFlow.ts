@@ -173,6 +173,9 @@ export interface ClientFlowState {
   // Step approval statuses metadata from API — keyed by templateId
   stepStatuses: Record<string, StepStatusMetadata | null>;
 
+  // Admin decision note fetched once from feedback API (feedbackForStep: 'all')
+  adminDecisionNotes: string | null;
+
   // UI preferences
   componentsPanelOpen: boolean;
 }
@@ -220,6 +223,9 @@ export interface ClientFlowActions {
 
     // step approval management
     setStepStatuses: (data: Record<string, StepStatusMetadata | null>) => void;
+
+    // admin decision notes (cached after first fetch)
+    setAdminDecisionNotes: (notes: string | null) => void;
 
     // UI preferences
     setComponentsPanelOpen: (open: boolean) => void;

@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { BrowserPreviewProps } from '../../../features/client-flow/types/clientFlow';
 import { Safari } from '@/components/magicui/safari';
 import Android from '@/components/magicui/android';
 import { safeDecodeAndSanitizeHtml } from '@/lib/utils/helper';
 import { useOptimizedHTMLMerger } from '@/lib/hooks';
 import { ReminderTabConfig } from '@/features/builder/types';
+import { useClientFlowStore } from '@/stores/clientFlowStore';
+import { templateContentParser, ContentMapping } from '@/lib/utils/template-content-parser';
 
 /**
  * BrowserPreview - Enhanced wrapper that combines existing PopupPreview with website background
@@ -19,6 +21,7 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   onPopupInteraction,
   className = '',
 }) => {
+  const [baseHtml, setBaseHtml] = useState<string>('');
   const [sanitizedHtml, setSanitizedHtml] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   // iframeEl as state (not just ref) so the write-effect re-runs whenever a new
@@ -31,6 +34,16 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   }, []);
   const { mergeFromRecord } = useOptimizedHTMLMerger();
 
+  const { contentFormData, selectedCouponsData, hasCouponSelectionChanged } = useClientFlowStore();
+
+  const contentMapping: ContentMapping = useMemo(() => {
+    const mapping: ContentMapping = {};
+    Object.entries(contentFormData).forEach(([fieldId, value]) => {
+      if (value && typeof value === 'string') mapping[fieldId] = value;
+    });
+    return mapping;
+  }, [contentFormData]);
+
   // Process popup template HTML when it changes
   useEffect(() => {
     const processPopupHtml = async () => {
@@ -39,11 +52,11 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
         !Array.isArray(popupTemplate) ||
         popupTemplate.length === 0
       ) {
-        setSanitizedHtml('');
+        setBaseHtml('');
         return;
       }
 
-      setSanitizedHtml(''); // Clear stale content immediately so the iframe unmounts cleanly
+      setBaseHtml(''); // Clear stale content immediately so the iframe unmounts cleanly
       setIsProcessing(true);
       try {
         // Get the first template that matches the current viewport
@@ -67,13 +80,13 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
             }
           );
 
-          setSanitizedHtml(mergedHtml);
+          setBaseHtml(mergedHtml);
         } else {
-          setSanitizedHtml('');
+          setBaseHtml('');
         }
       } catch (error) {
         console.error('Error processing popup template HTML:', error);
-        setSanitizedHtml('');
+        setBaseHtml('');
       } finally {
         setIsProcessing(false);
       }
@@ -81,6 +94,21 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
 
     processPopupHtml();
   }, [popupTemplate, viewport]);
+
+  // Apply content replacements (field values + coupons) on top of the base HTML
+  useEffect(() => {
+    if (!baseHtml) { setSanitizedHtml(''); return; }
+    try {
+      let updatedHtml = templateContentParser.updateContent(baseHtml, contentMapping);
+      const shouldUpdateCoupons = (selectedCouponsData?.length ?? 0) > 0 || hasCouponSelectionChanged;
+      if (shouldUpdateCoupons) {
+        updatedHtml = templateContentParser.updateCouponList(updatedHtml, selectedCouponsData ?? []);
+      }
+      setSanitizedHtml(updatedHtml);
+    } catch {
+      setSanitizedHtml(baseHtml);
+    }
+  }, [baseHtml, contentMapping, selectedCouponsData, hasCouponSelectionChanged]);
 
   // Write content whenever sanitizedHtml changes OR whenever a new iframe DOM element
   // is mounted (iframeEl changes). The second case covers viewport switches where

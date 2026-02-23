@@ -115,7 +115,7 @@ export const BaseTemplateBuilderPage: React.FC<BaseTemplateBuilderPageProps> = (
 
     if (navigate) {
       navigate(
-        `/coupon-builder-v2/base-templates/${createdBaseTemplateId ?? createdTemplateId}/edit`
+        `/popup-builder/base-templates/${createdBaseTemplateId ?? createdTemplateId}/edit`
       );
     }
 
@@ -133,7 +133,7 @@ export const BaseTemplateBuilderPage: React.FC<BaseTemplateBuilderPageProps> = (
     if (onSuccess) {
       onSuccess();
     } else if (navigate) {
-      navigate('/coupon-builder-v2/base-templates');
+      navigate('/popup-builder/base-templates');
     }
   };
 
@@ -143,7 +143,7 @@ export const BaseTemplateBuilderPage: React.FC<BaseTemplateBuilderPageProps> = (
     if (onCancel) {
       onCancel();
     } else if (navigate) {
-      navigate('/coupon-builder-v2/base-templates');
+      navigate('/popup-builder/base-templates');
     }
   };
 

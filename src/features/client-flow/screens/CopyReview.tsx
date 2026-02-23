@@ -8,6 +8,7 @@ import { useClientFlow } from '../hooks/use-client-flow';
 import { useDevicesStore } from '@/stores/common/devices.store';
 import { useClientFlowStore } from '@/stores/clientFlowStore';
 import ShopperSegmentSelector from '../components/shopper-segment-selector';
+import { StepInfoBanner } from '../components/StepInfoBanner';
 
 export const CopyReview: React.FC = () => {
   const { devices } = useDevicesStore();
@@ -38,12 +39,10 @@ export const CopyReview: React.FC = () => {
 
       {/* CENTER: Content configuration + live preview + shopper details */}
       <section className="center-content">
-        {/* Info banner */}
-        <div className="info-banner info">
-          <span>
-            Review and customize the <strong>copy</strong> for this shopper group. Changes sync to the live preview below.
-          </span>
-        </div>
+        <StepInfoBanner
+          showLockStatuses
+          message={<>Review and customize the <strong>copy</strong> for this shopper group. Changes sync to the live preview below.</>}
+        />
 
         {/* Shopper details at the top */}
         <div className="mt-5">

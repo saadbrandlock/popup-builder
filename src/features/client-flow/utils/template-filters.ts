@@ -19,7 +19,8 @@ export function getTemplatesForDevice(
   deviceType: 'desktop' | 'mobile'
 ): ClientFlowData[] {
   if (!clientData?.length) return [];
-  return clientData.filter((t) => (t.staging_status === 'client-review' || t.staging_status === 'admin-review') && deviceTypeMatches(t.devices, deviceType));
+  const VISIBLE_STATUSES = new Set(['client-review', 'admin-review', 'admin-changes-request', 'admin-rejected', 'published']);
+  return clientData.filter((t) => VISIBLE_STATUSES.has(t.staging_status) && deviceTypeMatches(t.devices, deviceType));
 }
 
 /**

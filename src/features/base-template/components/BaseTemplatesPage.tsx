@@ -87,7 +87,7 @@ export const BaseTemplatesPage: React.FC<BaseTemplatesPageProps> = ({
     if (onCreateTemplate) {
       onCreateTemplate();
     } else if (navigate) {
-      navigate('/coupon-builder-v2/base-templates/create');
+      navigate('/popup-builder/base-templates/create');
     }
   };
 

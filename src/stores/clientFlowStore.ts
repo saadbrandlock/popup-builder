@@ -71,6 +71,9 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
     // Step approval statuses — keyed by templateId
     stepStatuses: {} as Record<string, StepStatusMetadata | null>,
 
+    // Admin decision note — fetched once from feedbackForStep:'all', cached here
+    adminDecisionNotes: null as string | null,
+
     // UI preferences
     componentsPanelOpen: true,
 
@@ -169,6 +172,10 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
       // Step approval management
       setStepStatuses: (data: Record<string, StepStatusMetadata | null>) => {
         set({ stepStatuses: data });
+      },
+
+      setAdminDecisionNotes: (notes: string | null) => {
+        set({ adminDecisionNotes: notes });
       },
 
       // Error Management

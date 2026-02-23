@@ -27,6 +27,15 @@ const ContentForm = () => {
     clientData,
     actions
   } = useClientFlowStore();
+
+  // Lock form when published or admin-rejected; leave unlocked for admin-changes-request (client must re-edit)
+  const isPublished = (clientData?.length ?? 0) > 0 &&
+    (clientData ?? []).every(t => t.template_status === 'published');
+  const isRejected = (clientData?.length ?? 0) > 0 &&
+    (clientData ?? []).every(t => t.template_status === 'admin-rejected');
+  const isInAdminReview = (clientData?.length ?? 0) > 0 &&
+    (clientData ?? []).every(t => t.template_status === 'admin-review');
+  const isFormLocked = isPublished || isRejected || isInAdminReview;
   const { devices } = useDevicesStore();
   const { apiClient, accountDetails } = useGenericStore();
   const { contentSubDataLoading } = useLoadingStore();
@@ -447,7 +456,7 @@ const ContentForm = () => {
               }
               allowClear
               loading={contentSubDataLoading}
-              disabled={!availablePresets.length}
+              disabled={isFormLocked || !availablePresets.length}
               options={availablePresets.map(preset => ({
                 label: preset.parent.group_label || `Preset ${preset.parent.id}`,
                 value: preset.parent.id,
@@ -470,7 +479,7 @@ const ContentForm = () => {
           debounceRef.current = setTimeout(() => actions.setContentFormData(allValues), 300);
         }}
         layout="vertical"
-        disabled={isLoading}
+        disabled={isLoading || isFormLocked}
       >
         <Row gutter={[16, 16]}>
           {filteredFields.map((field) => (
@@ -491,7 +500,7 @@ const ContentForm = () => {
         {/* Confirm Changes Button */}
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isFormLocked}
           className="cf-btn-confirm mt-6"
         >
           <CheckCircle size={18} />

@@ -51,6 +51,36 @@ export interface PublishedTemplatesCouponDesigner {
   is_generic: boolean;
 }
 
+// Admin Review Queue (grouped by account)
+export interface AdminReviewQueueChildTemplate {
+  id: string;
+  name: string;
+  status: string | null;
+  devices: Array<{ id: number; device_type: string }>;
+}
+
+export interface AdminReviewQueueTemplate {
+  id: string;
+  name: string;
+  status: string | null;
+  devices: Array<{ id: number; device_type: string }>;
+  shopper_ids: number[];
+  updated_at: string | null;
+  child_templates?: AdminReviewQueueChildTemplate[];
+}
+
+export interface AdminReviewQueueItem {
+  account_id: number;
+  account_name: string;
+  account_domain: string;
+  template_count: number;
+  latest_updated: string;
+  devices: Array<{ id: number; device_type: string }>;
+  templates: AdminReviewQueueTemplate[];
+}
+
+export interface AdminReviewQueueResponse extends PaginatedResponse<AdminReviewQueueItem> {}
+
 // API method parameter types
 export interface TemplateListParams {
   shopperId?: number;

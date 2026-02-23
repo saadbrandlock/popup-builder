@@ -3,6 +3,7 @@ import { useClientFlowStore } from '@/stores/clientFlowStore';
 import { useDevicesStore } from '@/stores/common/devices.store';
 import { useLoadingStore } from '@/stores/common/loading.store';
 import { useGenericStore } from '@/stores/generic.store';
+import { getTemplatesForDevice } from '@/features/client-flow/utils/template-filters';
 import { message } from 'antd';
 
 export const useClientFlow = () => {
@@ -62,6 +63,20 @@ export const useClientFlow = () => {
     loadingActions.setClientTemplateDetailsLoading(true);
     try {
       const response = await api.templates.getClientTemplatesData(accountId);
+
+      // If the account has no reviewable templates (all draft / not yet pushed to review),
+      // redirect to the landing page instead of showing an empty flow.
+      const hasReviewableTemplates =
+        Array.isArray(response) &&
+        response.length > 0 &&
+        response.some((t) => t.staging_status !== 'draft');
+
+      if (!hasReviewableTemplates) {
+        const navigate = useGenericStore.getState().navigate;
+        navigate?.('/popup-builder/user-landing');
+        return;
+      }
+
       clientFlowActions.setClientData(response);
     } catch (error) {
     } finally {
@@ -136,19 +151,33 @@ export const useClientFlow = () => {
     }
   };
 
-  const upsertStepApproval = async (templateId: string, stepKey: string, status: string) => {
+  /**
+   * Upserts step approval for all templates in a design step (desktop or mobile).
+   * Uses batch API to avoid multiple round-trips when there are multiple templates.
+   */
+  const upsertStepApprovalForDesignStep = async (
+    stepKey: 'desktopDesign' | 'mobileDesign',
+    status: string
+  ) => {
     if (!api) return;
-    loadingActions.setClientTemplateDetailsLoading(true);
+    const { clientData: data } = useClientFlowStore.getState();
+    if (!data?.length) return;
+
+    const deviceType = stepKey === 'desktopDesign' ? 'desktop' : 'mobile';
+    const templates = getTemplatesForDevice(data, deviceType);
+    const templateIds = templates.map((t) => t.template_id);
+    if (!templateIds.length) return;
+
+    loadingActions.setStepApprovalLoading(true);
     try {
-      await api.templates.upsertStepApproval(templateId, stepKey, status);
-      // Refresh all statuses via the single account call
+      await api.templates.batchUpsertStepApproval(templateIds, stepKey, status);
       await fetchAllStepStatuses();
       message.success('Step approval updated successfully');
     } catch (error) {
       console.error('Error upserting step approval:', error);
       message.error('Failed to update step approval');
     } finally {
-      loadingActions.setClientTemplateDetailsLoading(false);
+      loadingActions.setStepApprovalLoading(false);
     }
   };
 
@@ -209,7 +238,7 @@ export const useClientFlow = () => {
     getContentFieldsWithContent,
     loadContentPresets,
     getDevices,
-    upsertStepApproval,
+    upsertStepApprovalForDesignStep,
     fetchAllStepStatuses,
     upsertStepApprovalForAllTemplates,
     finalizeClientApproval,

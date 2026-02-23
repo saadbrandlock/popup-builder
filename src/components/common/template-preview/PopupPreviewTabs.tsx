@@ -14,29 +14,44 @@ interface PopupPreviewTabsProps {
   className?: string;
   /** Enhanced mode with sync indicator and dark background */
   enhanced?: boolean;
+  /** Skip staging_status visibility filter — use for admin previews where any status should be shown */
+  bypassStatusFilter?: boolean;
 }
 
 const PopupPreviewTabsBase: React.FC<PopupPreviewTabsProps> = ({
   clientData,
   activeShopperId = null,
   className = '',
-  enhanced = false
+  enhanced = false,
+  bypassStatusFilter = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'desktop' | 'mobile'>('desktop');
 
+  const getByDevice = (deviceType: 'desktop' | 'mobile') => {
+    if (!clientData?.length) return [];
+    if (bypassStatusFilter) {
+      return clientData.filter((t) =>
+        t.devices?.some((d) => d.device_type.toLowerCase() === deviceType)
+      );
+    }
+    return getTemplatesForDevice(clientData, deviceType);
+  };
+
   const desktopTemplate = useMemo(() => {
     if (!clientData?.length) return null;
+    const byDevice = getByDevice('desktop');
+    if (bypassStatusFilter) return byDevice[0] ?? null;
     const byShopper = getTemplatesForDeviceAndShopper(clientData, 'desktop', activeShopperId ?? undefined);
-    const byDevice = getTemplatesForDevice(clientData, 'desktop');
     return byShopper[0] ?? byDevice[0] ?? null;
-  }, [clientData, activeShopperId]);
+  }, [clientData, activeShopperId, bypassStatusFilter]);
 
   const mobileTemplate = useMemo(() => {
     if (!clientData?.length) return null;
+    const byDevice = getByDevice('mobile');
+    if (bypassStatusFilter) return byDevice[0] ?? null;
     const byShopper = getTemplatesForDeviceAndShopper(clientData, 'mobile', activeShopperId ?? undefined);
-    const byDevice = getTemplatesForDevice(clientData, 'mobile');
     return byShopper[0] ?? byDevice[0] ?? null;
-  }, [clientData, activeShopperId]);
+  }, [clientData, activeShopperId, bypassStatusFilter]);
 
   const tabItems = [
     {

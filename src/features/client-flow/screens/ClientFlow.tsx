@@ -114,17 +114,63 @@ export const ClientFlow: React.FC<ClientFlowProps> = ({
     onComplete,
   ]);
 
-  // Pre-compute step approval state in a single pass
+  // Pre-compute step approval state.
+  // For desktopDesign / mobileDesign: filter to only templates that carry that device
+  // before checking every(). In a parent-child pair, the desktop template only has
+  // desktopDesign and the mobile template only has mobileDesign — using every() across
+  // all templates would always return false for each step.
+  // For templateCopy: all templates must have it approved.
   const approvedSteps = useMemo(() => {
     if (!clientData?.length) return { desktopDesign: false, mobileDesign: false, templateCopy: false };
-    const check = (key: string) =>
-      clientData.every((t) => stepStatuses[t.template_id]?.stepStatus?.[key]?.status === 'approved');
+
+    const isApproved = (templateId: string, key: string) =>
+      stepStatuses[templateId]?.stepStatus?.[key]?.status === 'approved';
+
+    const desktopTemplates = clientData.filter(t =>
+      t.devices?.some((d: { device_type: string }) => d.device_type === 'desktop')
+    );
+    const mobileTemplates = clientData.filter(t =>
+      t.devices?.some((d: { device_type: string }) => d.device_type === 'mobile')
+    );
+
     return {
-      desktopDesign: check('desktopDesign'),
-      mobileDesign: check('mobileDesign'),
-      templateCopy: check('templateCopy'),
+      desktopDesign: desktopTemplates.length > 0 &&
+        desktopTemplates.every(t => isApproved(t.template_id, 'desktopDesign')),
+      mobileDesign: mobileTemplates.length > 0 &&
+        mobileTemplates.every(t => isApproved(t.template_id, 'mobileDesign')),
+      templateCopy: clientData.every(t => isApproved(t.template_id, 'templateCopy')),
     };
   }, [clientData, stepStatuses]);
+
+  // Final Review is complete when all steps approved AND (sent for admin review OR published)
+  const finalReviewComplete = useMemo(() => {
+    if (!clientData?.length) return false;
+    const allStepsApproved =
+      approvedSteps.desktopDesign && approvedSteps.mobileDesign && approvedSteps.templateCopy;
+    const alreadyFinalized = clientData.every(
+      (t) => stepStatuses[t.template_id]?.templateStatus === 'admin-review'
+    );
+    const isPublished = clientData.every(
+      (t) => t.staging_status === 'published' || t.template_status === 'published'
+    );
+    return allStepsApproved && (alreadyFinalized || isPublished);
+  }, [clientData, approvedSteps, stepStatuses]);
+
+  // Template status for header pill — derive from clientData
+  const templateStatusPill = useMemo(() => {
+    if (!clientData?.length) return null;
+    const status = clientData[0]?.staging_status ?? clientData[0]?.template_status;
+    const config: Record<string, { label: string; classes: string }> = {
+      published: { label: 'Published', classes: 'bg-green-100 text-green-800 border-green-200' },
+      'admin-review': { label: 'Admin Review', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
+      'admin-changes-request': { label: 'Changes Requested', classes: 'bg-orange-100 text-orange-800 border-orange-200' },
+      'admin-rejected': { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
+      'client-review': { label: 'Client Review', classes: 'bg-blue-100 text-blue-800 border-blue-200' },
+      draft: { label: 'Draft', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
+    };
+    const c = config[status ?? ''] ?? { label: status ?? '—', classes: 'bg-gray-100 text-gray-600 border-gray-200' };
+    return c;
+  }, [clientData]);
 
   // Step configuration with status / label content
   const steps = useMemo(
@@ -186,22 +232,23 @@ export const ClientFlow: React.FC<ClientFlowProps> = ({
           id: 3,
           title: 'Final Review',
           subtitle:
-            finalReview.status === 'approved'
+            finalReviewComplete
               ? 'Ready to launch'
               : finalReview.status === 'rejected'
                 ? 'Changes requested'
                 : 'Pending',
-        status:
-          finalReview.status === 'approved'
-            ? 'completed'
-            : finalReview.status === 'rejected'
-              ? 'error'
-              : currentStep === 3
-                ? 'active'
-                : 'pending',
-      },
-    ]},
-    [currentStep, desktopReview.status, mobileReview.status, finalReview.status, approvedSteps]
+          status:
+            finalReviewComplete
+              ? 'completed'
+              : finalReview.status === 'rejected'
+                ? 'error'
+                : currentStep === 3
+                  ? 'active'
+                  : 'pending',
+        },
+      ];
+    },
+    [currentStep, desktopReview.status, mobileReview.status, finalReview.status, approvedSteps, finalReviewComplete]
   );
 
   const completedStepCount = steps.filter((s) => s.status === 'completed').length;
@@ -236,8 +283,17 @@ export const ClientFlow: React.FC<ClientFlowProps> = ({
     <div className={`client-flow-root ${className}`}>
       {/* Page header */}
       <header className="page-header">
-        <div>
-          <h1>Popup Builder Review</h1>
+        <div className='w-full'>
+          <div className="flex justify-between items-center gap-3 flex-wrap">
+            <h1>Popup Builder Review</h1>
+            {templateStatusPill && (
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold ${templateStatusPill.classes}`}
+              >
+                {templateStatusPill.label}
+              </span>
+            )}
+          </div>
           <p>Review and approve your coupon module design across all devices</p>
         </div>
       </header>

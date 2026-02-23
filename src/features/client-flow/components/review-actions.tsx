@@ -18,8 +18,8 @@ interface ReviewActionsProps {
 const ReviewActions: React.FC<ReviewActionsProps> = ({ type, inline, showApprove = true, isApproved = false }) => {
   const { feedbackData, selectedTemplate } = useClientFlowStore();
   const { actions: genericActions } = useGenericStore();
-  const { upsertStepApproval } = useClientFlow();
-  const { stepApprovalLoading, actions: loadingActions } = useLoadingStore();
+  const { upsertStepApprovalForDesignStep } = useClientFlow();
+  const { stepApprovalLoading } = useLoadingStore();
 
   const currentFeedback = feedbackData[type] || '';
   const countWords = (text: string) => {
@@ -32,14 +32,9 @@ const ReviewActions: React.FC<ReviewActionsProps> = ({ type, inline, showApprove
   };
 
   const handleApprove = async () => {
-    if (!selectedTemplate?.template_id) return;
-    loadingActions.setStepApprovalLoading(true);
-    try {
-      const stepKey = type === 'desktop' ? 'desktopDesign' : 'mobileDesign';
-      await upsertStepApproval(selectedTemplate.template_id, stepKey, 'approved');
-    } finally {
-      loadingActions.setStepApprovalLoading(false);
-    }
+    if (type !== 'desktop' && type !== 'mobile') return;
+    const stepKey = type === 'desktop' ? 'desktopDesign' : 'mobileDesign';
+    await upsertStepApprovalForDesignStep(stepKey, 'approved');
   };
 
   if (inline) {

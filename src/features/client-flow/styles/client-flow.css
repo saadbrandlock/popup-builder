@@ -158,7 +158,19 @@
   max-width: 100%;
 }
 
-/* Info banner */
+/* ── StepInfoBanner ────────────────────────────────────────────────────── */
+
+.client-flow-root .step-info-banner {
+  border-radius: 8px;
+}
+
+/* Progress bar fill animation — driven by JS animationDuration via inline style */
+@keyframes bannerProgressFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* Legacy info-banner class — kept for any external usage */
 .client-flow-root .info-banner {
   display: flex;
   align-items: center;

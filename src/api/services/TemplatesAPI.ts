@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { BaseAPI } from './BaseAPI';
 import type {
+  AdminReviewQueueItem,
   ClientFlowData,
   PaginatedResponse,
   TCBTemplateStaging,
@@ -410,6 +411,56 @@ export class TemplatesAPI extends BaseAPI {
     } catch (error) {
       this.handleError(error, 'link child templates');
     }
+  }
+
+  /**
+   * Get admin review queue grouped by account (lightweight endpoint)
+   */
+  async getAdminReviewQueue(params: {
+    page?: number;
+    limit?: number;
+    nameSearch?: string;
+    deviceId?: number;
+    sortColumn?: string;
+    sortDirection?: 'ascend' | 'descend';
+  }): Promise<PaginatedResponse<AdminReviewQueueItem>> {
+    const queryParams: Record<string, any> = {};
+    if (params.page != null) queryParams.page = params.page;
+    if (params.limit != null) queryParams.limit = params.limit;
+    if (params.nameSearch) queryParams.nameSearch = params.nameSearch;
+    if (params.deviceId != null) queryParams.deviceId = params.deviceId;
+    if (params.sortColumn) queryParams.sortColumn = params.sortColumn;
+    if (params.sortDirection) queryParams.sortDirection = params.sortDirection;
+
+    return this.get<PaginatedResponse<AdminReviewQueueItem>>(
+      `/admin-review/queue`,
+      queryParams
+    );
+  }
+
+  /**
+   * Get published templates queue grouped by account (standalone endpoint)
+   */
+  async getPublishedTemplatesQueue(params: {
+    page?: number;
+    limit?: number;
+    nameSearch?: string;
+    deviceId?: number;
+    sortColumn?: string;
+    sortDirection?: 'ascend' | 'descend';
+  }): Promise<PaginatedResponse<AdminReviewQueueItem>> {
+    const queryParams: Record<string, any> = {};
+    if (params.page != null) queryParams.page = params.page;
+    if (params.limit != null) queryParams.limit = params.limit;
+    if (params.nameSearch) queryParams.nameSearch = params.nameSearch;
+    if (params.deviceId != null) queryParams.deviceId = params.deviceId;
+    if (params.sortColumn) queryParams.sortColumn = params.sortColumn;
+    if (params.sortDirection) queryParams.sortDirection = params.sortDirection;
+
+    return this.get<PaginatedResponse<AdminReviewQueueItem>>(
+      `/admin-review/published`,
+      queryParams
+    );
   }
 
   getClientTemplatesData(accountId: number) {
