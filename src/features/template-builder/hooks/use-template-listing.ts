@@ -29,10 +29,10 @@ export const useTemplateListing = () => {
     try {
       switch (action) {
         case 'edit':
-          navigate?.(`/coupon-builder-v2/popup-builder/${template.id}/edit`);
+          navigate?.(`/popup-builder/build/${template.id}/edit`);
           break;
         case 'preview':
-          navigate?.(`/coupon-builder-v2/popup-builder/${template.id}/preview`);
+          navigate?.(`/popup-builder/build/${template.id}/preview`);
           break;
         case 'client-review':
           await pushTemplateToClientReview(template);

@@ -71,6 +71,10 @@ export interface MergeOptions {
   autoOpenPopup?: boolean; // Auto-open popup on load
   disableCloseButtons?: boolean; // Prevent popup from being closed
   hideReminderTab?: boolean; // Hide reminder tab/button from rendering
+  /** Popup trigger animation type from reminder config (modal, slide, fade, zoom) */
+  popupTriggerType?: string;
+  /** Delay before auto-opening popup (ms). Use ~400ms when reminder tab is shown so entrance animation completes. */
+  autoOpenDelay?: number;
 }
 
 export interface TemplateData {

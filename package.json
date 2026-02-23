@@ -88,8 +88,10 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.10",
     "dompurify": "^3.2.6",
     "rough-notation": "^0.5.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "timezones-list": "^3.1.0"
   }
 }

@@ -3,12 +3,13 @@ import type {
   ClientFlowState,
   ClientFlowActions,
   ReviewStatus,
+  StepStatusMetadata,
 } from '../features/client-flow/types/clientFlow';
 import {
-  CBTemplateFieldContentIdMapping,
   CBTemplateFieldContentIdMappingWithContent,
   ClientFlowData,
   ShopperDetails,
+  CBCannedContentGroup,
 } from '@/types';
 
 // Default state values
@@ -36,15 +37,13 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
     desktopReview: defaultReviewStatus,
     mobileReview: defaultReviewStatus,
     finalReview: defaultReviewStatus,
-    comments: [],
 
     // Error States
     error: null,
 
     // custom
-    shopperDetails: null,
+    shopperDetailsCache: {} as Record<string, ShopperDetails>,
     activeContentShopper: {
-      template: { name: null, id: null },
       content: { name: null, id: null },
     },
 
@@ -52,6 +51,10 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
     contentFields: [],
     contentFormData: {} as { [key: string]: string },
     selectedDeviceId: null as number | null,
+    availablePresets: [] as CBCannedContentGroup[],
+    selectedPreset: null as CBCannedContentGroup | null,
+    selectedCouponsData: [] as Array<{ offerText: string; subtext: string }>,
+    hasCouponSelectionChanged: false,
 
     // feedback state
     feedbackData: {
@@ -63,8 +66,16 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
     activeHighlightedField: null as string | null,
     highlightedFieldName: null as string | null,
 
-    selectedReviewShopperId: null as number | null,
     selectedReviewTemplateId: null as string | null,
+
+    // Step approval statuses — keyed by templateId
+    stepStatuses: {} as Record<string, StepStatusMetadata | null>,
+
+    // Admin decision note — fetched once from feedbackForStep:'all', cached here
+    adminDecisionNotes: null as string | null,
+
+    // UI preferences
+    componentsPanelOpen: true,
 
     // ============================================================================
     // ACTIONS (following existing store pattern)
@@ -76,18 +87,18 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
         set({ currentStep: step });
       },
 
-      setShopperDetails: (details: ShopperDetails) => {
-        set({ shopperDetails: details });
+      setShopperDetails: (shopperId: string, details: ShopperDetails) => {
+        set((state) => ({
+          shopperDetailsCache: { ...state.shopperDetailsCache, [shopperId]: details },
+        }));
       },
 
       setActiveContentShopper: (shopper: {
-        template?: { name: string; id: string };
         content?: { name: string; id: string };
       }) => {
         set((state) => ({
           activeContentShopper: {
             ...state.activeContentShopper,
-            template: shopper.template || get().activeContentShopper.template,
             content: shopper.content || get().activeContentShopper.content,
           },
         }));
@@ -102,10 +113,6 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
         set({ selectedTemplate: template });
       },
 
-      setSelectedReviewShopperId: (id: number | null) => {
-        set({ selectedReviewShopperId: id });
-      },
-
       setSelectedReviewTemplateId: (id: string | null) => {
         set({ selectedReviewTemplateId: id });
       },
@@ -115,13 +122,20 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
         set({ contentFields: fields });
       },
 
-
       setContentFormData: (data: { [key: string]: string }) => {
         set({ contentFormData: data });
       },
 
       setSelectedDeviceId: (deviceId: number | null) => {
         set({ selectedDeviceId: deviceId });
+      },
+
+      setSelectedCouponsData: (data: Array<{ offerText: string; subtext: string }>) => {
+        set({ selectedCouponsData: data });
+      },
+
+      setHasCouponSelectionChanged: (value: boolean) => {
+        set({ hasCouponSelectionChanged: value });
       },
 
       // feedback management
@@ -136,26 +150,44 @@ export const useClientFlowStore = create<ClientFlowState & ClientFlowActions>(
 
       // field highlighting management
       setHighlightedField: (fieldId: string | null, fieldName?: string | null) => {
-        set({ 
+        set({
           activeHighlightedField: fieldId,
           highlightedFieldName: fieldName || null,
         });
+      },
+
+      // preset management
+      setAvailablePresets: (presets: CBCannedContentGroup[]) => {
+        set({ availablePresets: presets });
+      },
+
+      setSelectedPreset: (preset: CBCannedContentGroup | null) => {
+        set({ selectedPreset: preset });
+      },
+
+      clearPresets: () => {
+        set({ availablePresets: [], selectedPreset: null });
+      },
+
+      // Step approval management
+      setStepStatuses: (data: Record<string, StepStatusMetadata | null>) => {
+        set({ stepStatuses: data });
+      },
+
+      setAdminDecisionNotes: (notes: string | null) => {
+        set({ adminDecisionNotes: notes });
       },
 
       // Error Management
       clearError: () => {
         set({ error: null });
       },
+
+      // UI preferences
+      setComponentsPanelOpen: (open: boolean) => {
+        set({ componentsPanelOpen: open });
+      },
     },
   })
 );
 
-// ============================================================================
-// CONVENIENCE HOOKS (following existing pattern)
-// ============================================================================
-
-export const useClientFlowActions = () =>
-  useClientFlowStore((state) => state.actions);
-
-export const useClientFlowError = () =>
-  useClientFlowStore((state) => state.error);

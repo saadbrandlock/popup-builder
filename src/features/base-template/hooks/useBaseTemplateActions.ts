@@ -180,7 +180,7 @@ export const useBaseTemplateActions = () => {
 
   const editTemplate = (template: BaseTemplate, navigate?: (path: string) => void) => {
     if (navigate) {
-      navigate(`/coupon-builder-v2/base-templates/${template.template_id}/edit`);
+      navigate(`/popup-builder/base-templates/${template.template_id}/edit`);
     } else {
       message.info(`Edit template: ${template.name}`);
     }

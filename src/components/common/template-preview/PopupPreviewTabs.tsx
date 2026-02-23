@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Tabs, Typography } from 'antd';
-import { MonitorSpeaker, Smartphone } from 'lucide-react';
+import { MonitorSpeaker, Smartphone, Eye } from 'lucide-react';
 import { PopupOnlyView } from '../index';
 import { ClientFlowData } from '@/types';
 import { getTemplatesForDevice, getTemplatesForDeviceAndShopper } from '@/features/client-flow/utils/template-filters';
@@ -12,28 +12,46 @@ interface PopupPreviewTabsProps {
   /** When set, desktop/mobile tabs show the template for this shopper group; otherwise first template per device. */
   activeShopperId?: number | null;
   className?: string;
+  /** Enhanced mode with sync indicator and dark background */
+  enhanced?: boolean;
+  /** Skip staging_status visibility filter — use for admin previews where any status should be shown */
+  bypassStatusFilter?: boolean;
 }
 
-export const PopupPreviewTabs: React.FC<PopupPreviewTabsProps> = ({ 
+const PopupPreviewTabsBase: React.FC<PopupPreviewTabsProps> = ({
   clientData,
   activeShopperId = null,
-  className = '' 
+  className = '',
+  enhanced = false,
+  bypassStatusFilter = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'desktop' | 'mobile'>('desktop');
 
+  const getByDevice = (deviceType: 'desktop' | 'mobile') => {
+    if (!clientData?.length) return [];
+    if (bypassStatusFilter) {
+      return clientData.filter((t) =>
+        t.devices?.some((d) => d.device_type.toLowerCase() === deviceType)
+      );
+    }
+    return getTemplatesForDevice(clientData, deviceType);
+  };
+
   const desktopTemplate = useMemo(() => {
     if (!clientData?.length) return null;
+    const byDevice = getByDevice('desktop');
+    if (bypassStatusFilter) return byDevice[0] ?? null;
     const byShopper = getTemplatesForDeviceAndShopper(clientData, 'desktop', activeShopperId ?? undefined);
-    const byDevice = getTemplatesForDevice(clientData, 'desktop');
     return byShopper[0] ?? byDevice[0] ?? null;
-  }, [clientData, activeShopperId]);
+  }, [clientData, activeShopperId, bypassStatusFilter]);
 
   const mobileTemplate = useMemo(() => {
     if (!clientData?.length) return null;
+    const byDevice = getByDevice('mobile');
+    if (bypassStatusFilter) return byDevice[0] ?? null;
     const byShopper = getTemplatesForDeviceAndShopper(clientData, 'mobile', activeShopperId ?? undefined);
-    const byDevice = getTemplatesForDevice(clientData, 'mobile');
     return byShopper[0] ?? byDevice[0] ?? null;
-  }, [clientData, activeShopperId]);
+  }, [clientData, activeShopperId, bypassStatusFilter]);
 
   const tabItems = [
     {
@@ -45,12 +63,23 @@ export const PopupPreviewTabs: React.FC<PopupPreviewTabsProps> = ({
         </span>
       ),
       children: desktopTemplate ? (
-        <div className="!w-full flex justify-center p-4">
-          <PopupOnlyView
-            viewport="desktop"
-            popupTemplate={[desktopTemplate]}
-            showViewportLabel={false}
-          />
+        <div className={enhanced ? "dark-preview-bg" : "!w-full flex justify-center p-4"}>
+          {enhanced ? (
+            <div className="!w-full flex justify-center">
+              <PopupOnlyView
+                viewport="desktop"
+                popupTemplate={[desktopTemplate]}
+                showViewportLabel={false}
+                compact={true}
+              />
+            </div>
+          ) : (
+            <PopupOnlyView
+              viewport="desktop"
+              popupTemplate={[desktopTemplate]}
+              showViewportLabel={false}
+            />
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-center h-96">
@@ -67,12 +96,23 @@ export const PopupPreviewTabs: React.FC<PopupPreviewTabsProps> = ({
         </span>
       ),
       children: mobileTemplate ? (
-        <div className="w-full flex justify-center p-4">
-          <PopupOnlyView
-            viewport="mobile"
-            popupTemplate={[mobileTemplate]}
-            showViewportLabel={false}
-          />
+        <div className={enhanced ? "dark-preview-bg" : "w-full flex justify-center"}>
+          {enhanced ? (
+            <div className="w-full flex justify-center">
+              <PopupOnlyView
+                viewport="mobile"
+                popupTemplate={[mobileTemplate]}
+                showViewportLabel={false}
+                compact={true}
+              />
+            </div>
+          ) : (
+            <PopupOnlyView
+              viewport="mobile"
+              popupTemplate={[mobileTemplate]}
+              showViewportLabel={false}
+            />
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-center h-96">
@@ -85,12 +125,24 @@ export const PopupPreviewTabs: React.FC<PopupPreviewTabsProps> = ({
   return (
     <div className={className}>
       <div className="mb-4">
-        <Title level={4}>
-          Template Preview
-        </Title>
-        <Typography.Text type="secondary">
-          Preview your popup design across devices
-        </Typography.Text>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye size={18} className="text-blue-600" />
+            <Title level={4} className="mb-0">
+              Live Preview
+            </Title>
+          </div>
+          {enhanced && (
+            <div className="synced-indicator">
+              Synced
+            </div>
+          )}
+        </div>
+        {!enhanced && (
+          <Typography.Text type="secondary" className="block mt-1">
+            Preview your popup design across devices
+          </Typography.Text>
+        )}
       </div>
 
       <Tabs
@@ -103,3 +155,5 @@ export const PopupPreviewTabs: React.FC<PopupPreviewTabsProps> = ({
     </div>
   );
 };
+
+export const PopupPreviewTabs = React.memo(PopupPreviewTabsBase);

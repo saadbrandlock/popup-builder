@@ -13,6 +13,7 @@ export const StatusTag: React.FC<StatusTagProps> = ({ status }) => {
     published: { color: 'success', text: 'Published' },
     archive: { color: 'warning', text: 'Archived' },
     'client-review': { color: 'processing', text: 'Client Review' },
+    'admin-review': { color: 'processing', text: 'Admin Review' },
   };
 
   const config = status ? statusConfig[status] : undefined;

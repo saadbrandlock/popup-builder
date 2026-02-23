@@ -1,0 +1,993 @@
+/* Root wrapper for the entire client flow */
+.client-flow-root {
+  font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #F5F3EF;
+  color: #1A1714;
+}
+
+/* Page header */
+.client-flow-root .page-header {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E4DFD7;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.client-flow-root .page-header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.client-flow-root .page-header p {
+  font-size: 12px;
+  color: #9C958D;
+  margin: 1px 0 0;
+}
+
+/* Horizontal stepper */
+.client-flow-root .horizontal-stepper {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E4DFD7;
+  padding: 0 28px;
+  display: flex;
+  position: relative;
+}
+
+.client-flow-root .horizontal-stepper .stepper-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, #2F855A, #2B6CB0);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+}
+
+.client-flow-root .h-step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 2.5px solid transparent;
+}
+
+.client-flow-root .h-step:hover {
+  background: #FAFAF8;
+}
+
+.client-flow-root .h-step::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 24px;
+  background: #EDEBE6;
+}
+
+.client-flow-root .h-step:last-child::after {
+  display: none;
+}
+
+.client-flow-root .h-step .step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: #F5F3EF;
+  color: #9C958D;
+  border: 1.5px solid #E4DFD7;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .h-step .step-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6B6560;
+  line-height: 1.3;
+}
+
+.client-flow-root .h-step .step-label small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: #9C958D;
+  margin-top: 1px;
+}
+
+.client-flow-root .h-step.active {
+  border-bottom-color: #2B6CB0;
+}
+
+.client-flow-root .h-step.active .step-circle {
+  background: #2B6CB0;
+  color: #FFFFFF;
+  border-color: #2B6CB0;
+  box-shadow: 0 0 0 3px #EBF4FF;
+}
+
+.client-flow-root .h-step.active .step-label {
+  color: #1A1714;
+}
+
+.client-flow-root .h-step.completed {
+  border-bottom-color: #2F855A;
+}
+
+.client-flow-root .h-step.completed .step-circle {
+  background: #2F855A;
+  color: #FFFFFF;
+  border-color: #2F855A;
+}
+
+.client-flow-root .h-step.completed .step-label {
+  color: #2F855A;
+}
+
+/* Main layout wrapper (panels are implemented per-step screens) */
+.client-flow-root .main-layout {
+  display: flex;
+  min-height: calc(100vh - 110px);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.client-flow-root .center-content {
+  flex: 1;
+  padding: 22px 26px;
+  overflow-y: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ── StepInfoBanner ────────────────────────────────────────────────────── */
+
+.client-flow-root .step-info-banner {
+  border-radius: 8px;
+}
+
+/* Progress bar fill animation — driven by JS animationDuration via inline style */
+@keyframes bannerProgressFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* Legacy info-banner class — kept for any external usage */
+.client-flow-root .info-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.client-flow-root .info-banner.info {
+  background: #EBF4FF;
+  color: #1E4E8C;
+  border: 1px solid #BEE3F8;
+}
+
+/* Generic card styling used inside client flow */
+.client-flow-root .card {
+  background: #FFFFFF;
+  border: 1px solid #E4DFD7;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(26, 23, 20, 0.04)
+}
+
+.client-flow-root .card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #EDEBE6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.client-flow-root .card-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.client-flow-root .card-body {
+  padding: 18px;
+}
+
+/* Two-column grid for content configuration + preview */
+.client-flow-root .content-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .client-flow-root .content-grid {
+    grid-template-columns: 1fr
+  }
+}
+
+/* Shopper sidebar (left in reference, rendered as aside) */
+.client-flow-root .right-panel {
+  width: 200px;
+  background: #FFFFFF;
+  padding: 20px 14px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid #E4DFD7;
+}
+
+.client-flow-root .right-panel h4 {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9C958D;
+  margin-bottom: 6px;
+}
+
+.client-flow-root .right-panel p {
+  font-size: 10px;
+  color: #9C958D;
+  margin-bottom: 12px;
+}
+
+/* Right-side feedback panel */
+.client-flow-root .feedback-panel-right {
+  width: 280px;
+  background: #FFFFFF;
+  border-left: 1px solid #E4DFD7;
+  padding: 20px 16px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.client-flow-root .feedback-panel-right h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Feedback textarea + meta */
+.client-flow-root .feedback-textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 11px;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  resize: vertical;
+  color: #1A1714;
+  background: #FAFAF8;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .feedback-textarea:focus {
+  border-color: #2B6CB0;
+  box-shadow: 0 0 0 3px #EBF4FF;
+  background: #FFFFFF;
+  outline: none;
+}
+
+/* feedback-meta, char-count — now Tailwind */
+
+
+/* Info badges used for shopper/context labels */
+.client-flow-root .info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.client-flow-root .info-badge.info {
+  background: #EBF4FF;
+  color: #2B6CB0;
+}
+
+.client-flow-root .info-badge.problem {
+  background: #FFF5F5;
+  color: #C53030;
+}
+
+.client-flow-root .info-badge.solution {
+  background: #F0FFF4;
+  color: #2F855A;
+}
+
+/* Template tabs bar — pill-style tabs */
+.client-flow-root .template-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: #FAFAF8;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.client-flow-root .template-tabs-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #9C958D;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1px solid #E4DFD7;
+}
+
+.client-flow-root .template-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.client-flow-root .template-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6B6560;
+  cursor: pointer;
+  background: #FFFFFF;
+  border: 1.5px solid #E4DFD7;
+  border-radius: 8px;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.client-flow-root .template-tab-approved-icon {
+  flex-shrink: 0;
+  color: #2F855A;
+}
+
+.client-flow-root .template-tab-pill:hover {
+  color: #1A1714;
+  border-color: #9C958D;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(26, 23, 20, 0.06);
+}
+
+.client-flow-root .template-tab-pill.active {
+  color: #2B6CB0;
+  background: #EBF4FF;
+  border-color: #2B6CB0;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.1);
+}
+
+.client-flow-root .template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+
+.client-flow-root .template-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.client-flow-root .template-info p {
+  font-size: 13.5px;
+  color: #9C958D;
+  margin-top: 2px;
+}
+
+.client-flow-root .template-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Button styles (used for header Preview and CTAs) */
+.client-flow-root .cf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .cf-btn-primary {
+  background: #2B6CB0;
+  color: #FFFFFF;
+}
+
+.client-flow-root .cf-btn-primary:hover {
+  background: #1E4E8C;
+  box-shadow: 0 4px 12px rgba(26, 23, 20, 0.06);
+}
+
+.client-flow-root .cf-btn-secondary {
+  background: #FFFFFF;
+  color: #1A1714;
+  border: 1px solid #E4DFD7;
+}
+
+.client-flow-root .cf-btn-secondary:hover {
+  background: #FAFAF8;
+  border-color: #9C958D;
+  box-shadow: 0 4px 12px rgba(47, 133, 90, 0.15);
+}
+
+.client-flow-root .cf-btn-success {
+  background: #2f855a;
+  color: #FFFFFF;
+  border: 1px solid #2F855A
+}
+
+.client-flow-root .cf-btn-success:hover {
+  background: #276749;
+  border-color: #276749;
+  box-shadow: 0 4px 12px rgba(47, 133, 90, 0.15);
+}
+
+.client-flow-root .cf-btn[disabled],
+.client-flow-root .cf-btn-disabled {
+  background: #E4DFD7;
+  border-color: #E4DFD7;
+  color: #9C958D;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (max-width: 768px) {
+
+  .client-flow-root .right-panel,
+  .client-flow-root .feedback-panel-right {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .client-flow-root .main-layout {
+    display: block;
+  }
+}
+
+/* ==========================
+   COPY REVIEW REDESIGN STYLES
+   ========================== */
+
+/* Shopper list card styling - vertical card list */
+.client-flow-root .shopper-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 12px;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  background: #FFFFFF;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 3px solid #E4DFD7;
+}
+
+.client-flow-root .shopper-list-item:hover {
+  background: #FAFAF8;
+  border-color: #9C958D;
+  border-left-color: #9C958D;
+}
+
+.client-flow-root .shopper-list-item.active {
+  background: #F0FFF4;
+  border-left-color: #2F855A;
+  box-shadow: 0 2px 8px rgba(47, 133, 90, 0.08);
+}
+
+.client-flow-root .shopper-list-item.completed {
+  background: #F7FDF9;
+  border-left-color: #68D391;
+}
+
+.client-flow-root .shopper-list-item .step-indicator {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: #F5F3EF;
+  color: #6B6560;
+  border: 2px solid #E4DFD7;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .shopper-list-item.active .step-indicator {
+  background: #2F855A;
+  color: #FFFFFF;
+  border-color: #2F855A;
+}
+
+.client-flow-root .shopper-list-item.completed .step-indicator {
+  background: #C6F6D5;
+  color: #276749;
+  border-color: #68D391;
+}
+
+.client-flow-root .shopper-list-item .shopper-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.client-flow-root .shopper-list-item .shopper-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #1A1714;
+  margin: 0 0 2px;
+  line-height: 1.3;
+}
+
+.client-flow-root .shopper-list-item .shopper-desc {
+  font-size: 10px;
+  color: #9C958D;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Content configuration enhancements */
+.client-flow-root .preset-selector {
+  background: #FAFAF8;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6B6560;
+}
+
+.client-flow-root .preset-selector .ant-select {
+  min-width: 160px;
+}
+
+.client-flow-root .content-field-label {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: #6B6560;
+  margin-bottom: 6px;
+}
+
+.client-flow-root .field-helper-text {
+  font-size: 11px;
+  color: #9C958D;
+  margin-top: 4px;
+}
+
+.client-flow-root .coupon-assignment-card {
+  background: #FAFAF8;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.client-flow-root .coupon-assignment-card .section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A1714;
+  margin-bottom: 12px;
+}
+
+.client-flow-root .coupon-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #EBF4FF;
+  color: #2B6CB0;
+  border: 1px solid #BEE3F8;
+}
+
+/* Live preview enhancements */
+.client-flow-root .synced-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #2F855A;
+}
+
+.client-flow-root .synced-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2F855A;
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.client-flow-root .dark-preview-bg {
+  background: #000000;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Feedback quick tags */
+.client-flow-root .feedback-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.client-flow-root .feedback-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid #E4DFD7;
+  background: #FFFFFF;
+  color: #6B6560;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .feedback-tag:hover {
+  border-color: #9C958D;
+  background: #FAFAF8;
+}
+
+.client-flow-root .feedback-tag.active {
+  border-color: currentColor;
+  box-shadow: 0 0 0 3px currentColor;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.client-flow-root .feedback-tag.tag-good {
+  color: #2F855A;
+}
+
+.client-flow-root .feedback-tag.tag-good.active {
+  background: #F0FFF4;
+  border-color: #2F855A;
+}
+
+.client-flow-root .feedback-tag.tag-copy {
+  color: #DD6B20;
+}
+
+.client-flow-root .feedback-tag.tag-copy.active {
+  background: #FFFAF0;
+  border-color: #DD6B20;
+}
+
+.client-flow-root .feedback-tag.tag-tone {
+  color: #2B6CB0;
+}
+
+.client-flow-root .feedback-tag.tag-tone.active {
+  background: #EBF4FF;
+  border-color: #2B6CB0;
+}
+
+/* Confirm button styling */
+.client-flow-root .cf-btn-confirm {
+  width: 100%;
+  background: #319795;
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-flow-root .cf-btn-confirm:hover {
+  background: #2C7A7B;
+  box-shadow: 0 4px 12px rgba(49, 151, 149, 0.25);
+  transform: translateY(-1px);
+}
+
+.client-flow-root .cf-btn-confirm:active {
+  transform: translateY(0);
+}
+
+.client-flow-root .cf-btn-confirm[disabled] {
+  background: #E4DFD7;
+  color: #9C958D;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Section label for feedback */
+.client-flow-root .section-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  color: #9C958D;
+  margin-bottom: 8px;
+}
+
+/* Feedback drawer — now uses Ant Design Drawer + Tailwind */
+
+
+.client-flow-root .feedback-thread-drawer-body {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Drawer content (portaled) - thread styles */
+.feedback-thread-drawer .feedback-thread-drawer-body {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.feedback-thread-drawer .feedback-chat-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: #9C958D;
+  font-size: 12px;
+}
+
+.feedback-thread-drawer .feedback-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #9C958D;
+}
+
+.feedback-thread-drawer .feedback-chat-empty p {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6560;
+}
+
+.feedback-thread-drawer .feedback-chat-empty span {
+  font-size: 11px;
+}
+
+.feedback-thread-drawer .feedback-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedback-thread-drawer .feedback-thread-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feedback-thread-drawer .feedback-thread-item.feedback-reply {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #E4DFD7;
+}
+
+.feedback-thread-drawer .feedback-thread-bubble {
+  background: #F5F3EF;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  max-width: 100%;
+}
+
+.feedback-thread-drawer .feedback-thread-item.feedback-admin .feedback-thread-bubble {
+  background: #EBF4FF;
+  border-color: #BEE3F8;
+}
+
+.feedback-thread-drawer .feedback-thread-item.feedback-client .feedback-thread-bubble {
+  background: #F0FFF4;
+  border-color: #9AE6B4;
+}
+
+.feedback-thread-drawer .feedback-thread-meta {
+  display: block;
+  font-size: 10.5px;
+  color: #9C958D;
+  margin-bottom: 4px;
+}
+
+.feedback-thread-drawer .feedback-thread-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #1A1714;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.client-flow-root .feedback-chat-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: #9C958D;
+  font-size: 12px;
+}
+
+.client-flow-root .feedback-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #9C958D;
+}
+
+.client-flow-root .feedback-chat-empty p {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6560;
+}
+
+.client-flow-root .feedback-chat-empty span {
+  font-size: 11px;
+}
+
+.client-flow-root .feedback-compose-form .ant-form-item {
+  margin-bottom: 8px;
+}
+
+/* Feedback thread list (chat-style) */
+.client-flow-root .feedback-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-flow-root .feedback-thread-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.client-flow-root .feedback-thread-item.feedback-reply {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #E4DFD7;
+}
+
+.client-flow-root .feedback-thread-bubble {
+  background: #F5F3EF;
+  border: 1px solid #E4DFD7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  max-width: 100%;
+}
+
+.client-flow-root .feedback-thread-item.feedback-admin .feedback-thread-bubble {
+  background: #EBF4FF;
+  border-color: #BEE3F8;
+}
+
+.client-flow-root .feedback-thread-item.feedback-client .feedback-thread-bubble {
+  background: #F0FFF4;
+  border-color: #9AE6B4;
+}
+
+.client-flow-root .feedback-thread-meta {
+  display: block;
+  font-size: 10.5px;
+  color: #9C958D;
+  margin-bottom: 4px;
+}
+
+.client-flow-root .feedback-thread-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #1A1714;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Dark preview background for PopupOnlyView */
+.client-flow-root .preview-container-dark {
+  background: #000000;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden
+}
+
+/* Preview containers - proper sizing handled in component */
+.client-flow-root .preview-container-dark>div,
+.client-flow-root .dark-preview-bg>div {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

@@ -1,4 +1,7 @@
-import { CleanTemplateResponse, CBCannedContentWithShoppers } from '@/types';
+import {
+  CBCannedContentWithShoppers,
+  CBCannedContentGroup,
+} from '@/types';
 import { TablePaginationConfig } from 'antd';
 import { create } from 'zustand';
 
@@ -17,8 +20,13 @@ type ContentListingState = {
     sortDirection?: 'ascend' | 'descend';
   };
   industries: string[];
-  fields: {key: string, value: number}[];
+  fields: { key: string; value: number }[];
   error?: string;
+
+  // NEW: Grouped content state
+  contentGroups: CBCannedContentGroup[]; // Grouped data for display
+  selectedGroup: CBCannedContentGroup | null; // Currently editing group
+  expandedGroupIds: number[]; // UI state for expanded rows
 };
 
 type ContentListingActions = {
@@ -34,7 +42,12 @@ type ContentListingActions = {
     setSorter: (sorter: ContentListingState['sorter']) => void;
     setError: (error: string) => void;
     setIndustries: (industries: string[]) => void;
-    setFields: (fields: {key: string, value: number}[]) => void;
+    setFields: (fields: { key: string; value: number }[]) => void;
+
+    // NEW: Group management actions
+    setContentGroups: (groups: CBCannedContentGroup[]) => void;
+    setSelectedGroup: (group: CBCannedContentGroup | null) => void;
+    toggleGroupExpansion: (headingId: number) => void;
   };
 };
 
@@ -63,6 +76,12 @@ export const useContentListingStore = create<
   industries: [],
   fields: [],
   error: undefined,
+
+  // NEW: Grouped content initial state
+  contentGroups: [],
+  selectedGroup: null,
+  expandedGroupIds: [],
+
   actions: {
     setContents: (contents: CBCannedContentWithShoppers[]) =>
       set({ contents }),
@@ -96,8 +115,21 @@ export const useContentListingStore = create<
         },
       })),
     setError: (error: string) => set({ error }),
-    setIndustries: (industries: string[]) =>
-      set({ industries }),
-    setFields: (fields: { key: string; value: number; }[]) => set({ fields }),
+    setIndustries: (industries: string[]) => set({ industries }),
+    setFields: (fields: { key: string; value: number }[]) => set({ fields }),
+
+    // NEW: Group management actions
+    setContentGroups: (groups: CBCannedContentGroup[]) =>
+      set({ contentGroups: groups }),
+
+    setSelectedGroup: (group: CBCannedContentGroup | null) =>
+      set({ selectedGroup: group }),
+
+    toggleGroupExpansion: (headingId: number) =>
+      set((state) => ({
+        expandedGroupIds: state.expandedGroupIds.includes(headingId)
+          ? state.expandedGroupIds.filter((id) => id !== headingId)
+          : [...state.expandedGroupIds, headingId],
+      })),
   },
 }));

@@ -145,7 +145,7 @@ const BuilderMain: React.FC<BuilderMainProps> = ({
         actions.setTemplateConfig(data);
         message.success('Template created successfully!');
 
-        navigate(`/coupon-builder-v2/popup-builder/${newTemplateId}/edit`);
+        navigate(`/popup-builder/build/${newTemplateId}/edit`);
       }
     } catch (error: any) {
       console.error('Config submit error:', error);
@@ -217,7 +217,6 @@ const BuilderMain: React.FC<BuilderMainProps> = ({
           onBack={() => actions.setAdminBuilderStep(1)}
           onSave={async (config) => {
             // Save reminder tab config to template
-            console.log('Saving reminder tab config:', config);
             // TODO: Add API call to save config to template
           }}
         />

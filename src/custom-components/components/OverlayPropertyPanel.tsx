@@ -10,6 +10,8 @@ export interface OverlayPropertyPanelProps {
   editorContainerRef?: React.RefObject<HTMLDivElement | null>;
   /** 'overlay' = right-side overlay; 'left' = left-side overlay; 'inline' = card in flow below header */
   placement?: 'overlay' | 'left' | 'inline';
+  /** Width in px to match the underlying Unlayer property panel. Defaults to 300 (Unlayer default). */
+  panelWidth?: number;
 }
 
 export const OverlayPropertyPanel: React.FC<OverlayPropertyPanelProps> = ({
@@ -18,6 +20,7 @@ export const OverlayPropertyPanel: React.FC<OverlayPropertyPanelProps> = ({
   onClose,
   userRole,
   placement = 'overlay',
+  panelWidth = 300,
 }) => {
   const [localProps, setLocalProps] = useState<Record<string, unknown>>(component.currentProps);
 
@@ -176,10 +179,10 @@ export const OverlayPropertyPanel: React.FC<OverlayPropertyPanelProps> = ({
               position: 'absolute',
               top: 0,
               ...(isLeft ? { left: 0 } : { right: 0 }),
-              width: '360px',
+              width: `${panelWidth}px`,
               height: '100%',
               background: '#FFFFFF',
-              zIndex: 9999,
+              zIndex: 20,
               ...(isLeft
                 ? { borderRight: '1px solid #E5E7EB', boxShadow: '4px 0 16px rgba(0,0,0,0.08)' }
                 : { borderLeft: '1px solid #E5E7EB', boxShadow: '-4px 0 16px rgba(0,0,0,0.08)' }),

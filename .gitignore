@@ -72,3 +72,9 @@ Thumbs.db
 tmp
 temp
 .tmp
+
+CLAUDE.md
+.CLAUDE
+.vscode
+.windsurf
+package-lock.json

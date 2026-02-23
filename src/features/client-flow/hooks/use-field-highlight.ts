@@ -98,25 +98,41 @@ export function useFieldHighlight(
 
     const iframe = iframeRef.current;
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    
-    if (!iframeDoc || iframeDoc.readyState !== 'complete') return;
 
-    if (activeHighlightedField) {
-      // Re-inject styles first to ensure they exist
-      highlightEngine.injectStyles(iframe);
-      
-      // Then highlight with a small delay
-      setTimeout(() => {
-        highlightEngine.highlightField(
-          iframe,
-          activeHighlightedField,
-          highlightedFieldName || undefined
-        );
-      }, 100);
-    } else {
-      highlightEngine.clearHighlight(iframe);
-    }
-  }, [activeHighlightedField, highlightedFieldName, iframeRef, highlightEngine]);
+    if (!iframeDoc) return;
+
+    // Wait for iframe to be fully loaded
+    const performHighlight = () => {
+      if (iframeDoc.readyState !== 'complete') {
+        // If not ready, wait for load event
+        iframe.addEventListener('load', performHighlight, { once: true });
+        return;
+      }
+
+      if (activeHighlightedField) {
+        // Re-inject styles first to ensure they exist
+        highlightEngine.injectStyles(iframe);
+
+        // Then highlight - use requestAnimationFrame for better performance
+        requestAnimationFrame(() => {
+          highlightEngine.highlightField(
+            iframe,
+            activeHighlightedField,
+            highlightedFieldName || undefined
+          );
+        });
+      } else {
+        highlightEngine.clearHighlight(iframe);
+      }
+    };
+
+    performHighlight();
+
+    // Cleanup - remove event listener if component unmounts
+    return () => {
+      iframe.removeEventListener('load', performHighlight);
+    };
+  }, [activeHighlightedField, highlightedFieldName, highlightEngine]);
 
   // Manual control methods
   const highlightField = useCallback((fieldId: string, fieldName?: string) => {

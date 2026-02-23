@@ -25,6 +25,8 @@ import {
   InboxOutlined,
   DeleteOutlined,
   SelectOutlined,
+  DownOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import StatusTag from './common/StatusTag';
 import DeviceTags from './common/DeviceTags';
@@ -94,7 +96,7 @@ export const TemplatesListing: React.FC<TemplatesListingProps> = ({
       }
       const api = createAPI(apiClientFromStore);
       if (action === 'edit') {
-        navigate(`/coupon-builder-v2/popup-builder/${templateId}/edit`);
+        navigate(`/popup-builder/build/${templateId}/edit`);
       } else if (action === 'delete') {
         await api.templates.deleteTemplate(templateId);
         message.success('Child template deleted successfully');
@@ -450,23 +452,47 @@ export const TemplatesListing: React.FC<TemplatesListingProps> = ({
   const debouncedFetchTemplates = useDebouncedCallback(() => getTemplates(), 500);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!previewModalVisible || !previewTemplate) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     const designJson = previewTemplate.builder_state_json;
     if (!designJson || !validateUnlayerDesign(designJson)) {
       setPreviewHtml(null);
-      return;
+      setLoadingConversion(false);
+      return () => {
+        cancelled = true;
+      };
     }
+
     setLoadingConversion(true);
     convertUnlayerJsonToHtml(designJson)
-      .then((html) => setPreviewHtml(html))
+      .then((html) => {
+        if (!cancelled) {
+          setPreviewHtml(html);
+        }
+      })
       .catch((err) => {
         console.error('Failed to convert builder_state_json to HTML for preview:', err);
-        setPreviewHtml(null);
+        if (!cancelled) {
+          setPreviewHtml(null);
+        }
       })
-      .finally(() => setLoadingConversion(false));
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingConversion(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [previewModalVisible, previewTemplate?.id, previewTemplate?.builder_state_json]);
 
   const previewReady = previewModalVisible && !!previewTemplate && !!previewHtml;
@@ -527,26 +553,49 @@ export const TemplatesListing: React.FC<TemplatesListingProps> = ({
       <div className="flex sm:items-center justify-between gap-4">
         <div>
           <Title level={2} className="mb-1!">
-            Coupon Templates Listingg
+            Popup Templates Listing
           </Title>
-          <Text type="secondary">Manage and organize your coupon templates</Text>
+          <Text type="secondary">Manage and organize your popup templates</Text>
         </div>
 
-        <Space>
+        <Space.Compact>
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => navigate('/coupon-builder-v2/popup-builder')}
+            onClick={() => navigate('/popup-builder/build')}
           >
             Create Template
           </Button>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => navigate('/coupon-builder-v2/base-templates')}
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'base-templates',
+                  icon: <EyeOutlined />,
+                  label: 'Base Templates',
+                  onClick: () => navigate('/popup-builder/base-templates'),
+                },
+                {
+                  key: 'content',
+                  icon: <FileTextOutlined />,
+                  label: 'Content Management',
+                  onClick: () => navigate('/popup-builder/content-management'),
+                },
+                { type: 'divider' },
+                {
+                  key: 'admin-review',
+                  icon: <CheckOutlined />,
+                  label: 'Admin Review',
+                  onClick: () => navigate('/popup-builder/admin-review'),
+                },
+              ],
+            }}
+            placement="bottomRight"
+            trigger={['click']}
           >
-            Manage Base Templates
-          </Button>
-        </Space>
+            <Button type="primary" icon={<DownOutlined size={12} />} />
+          </Dropdown>
+        </Space.Compact>
       </div>
 
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -619,6 +668,7 @@ export const TemplatesListing: React.FC<TemplatesListingProps> = ({
             <PopupPreviewTabs
               clientData={previewData}
               className="w-full"
+              bypassStatusFilter
             />
           )}
         </div>

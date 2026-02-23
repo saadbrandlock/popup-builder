@@ -1,6 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { BaseAPI } from './BaseAPI';
 import type {
+  AdminReviewQueueItem,
   ClientFlowData,
   PaginatedResponse,
   TCBTemplateStaging,
@@ -412,7 +413,57 @@ export class TemplatesAPI extends BaseAPI {
     }
   }
 
-  getCleintTemplatesData(accountId: number) {
+  /**
+   * Get admin review queue grouped by account (lightweight endpoint)
+   */
+  async getAdminReviewQueue(params: {
+    page?: number;
+    limit?: number;
+    nameSearch?: string;
+    deviceId?: number;
+    sortColumn?: string;
+    sortDirection?: 'ascend' | 'descend';
+  }): Promise<PaginatedResponse<AdminReviewQueueItem>> {
+    const queryParams: Record<string, any> = {};
+    if (params.page != null) queryParams.page = params.page;
+    if (params.limit != null) queryParams.limit = params.limit;
+    if (params.nameSearch) queryParams.nameSearch = params.nameSearch;
+    if (params.deviceId != null) queryParams.deviceId = params.deviceId;
+    if (params.sortColumn) queryParams.sortColumn = params.sortColumn;
+    if (params.sortDirection) queryParams.sortDirection = params.sortDirection;
+
+    return this.get<PaginatedResponse<AdminReviewQueueItem>>(
+      `/admin-review/queue`,
+      queryParams
+    );
+  }
+
+  /**
+   * Get published templates queue grouped by account (standalone endpoint)
+   */
+  async getPublishedTemplatesQueue(params: {
+    page?: number;
+    limit?: number;
+    nameSearch?: string;
+    deviceId?: number;
+    sortColumn?: string;
+    sortDirection?: 'ascend' | 'descend';
+  }): Promise<PaginatedResponse<AdminReviewQueueItem>> {
+    const queryParams: Record<string, any> = {};
+    if (params.page != null) queryParams.page = params.page;
+    if (params.limit != null) queryParams.limit = params.limit;
+    if (params.nameSearch) queryParams.nameSearch = params.nameSearch;
+    if (params.deviceId != null) queryParams.deviceId = params.deviceId;
+    if (params.sortColumn) queryParams.sortColumn = params.sortColumn;
+    if (params.sortDirection) queryParams.sortDirection = params.sortDirection;
+
+    return this.get<PaginatedResponse<AdminReviewQueueItem>>(
+      `/admin-review/published`,
+      queryParams
+    );
+  }
+
+  getClientTemplatesData(accountId: number) {
     try {
       const response = this.get<ClientFlowData[]>(
         `/client-review/account/${accountId}`
@@ -436,11 +487,81 @@ export class TemplatesAPI extends BaseAPI {
         `/client-review/template/${templateId}`,
         templateData
       );
-      
+
       return response;
     } catch (error) {
       console.error('❌ Failed to update client review template:', error);
       this.handleError(error, 'update client review template');
+    }
+  }
+
+  /**
+   * Upsert step approval status for a template
+   */
+  async upsertStepApproval(
+    templateId: string,
+    stepKey: string,
+    status: string
+  ): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await this.put<{ success: boolean; data: any; message: string }>(
+        `/client/templates/${templateId}/step-approval`,
+        { stepKey, status }
+      );
+      return response;
+    } catch (error) {
+      this.handleError(error, 'upsert step approval');
+    }
+  }
+
+  /**
+   * Update staging status for a single template (also syncs cb_templates.status)
+   */
+  async updateStagingStatus(
+    templateId: string,
+    status: string
+  ): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await this.patch<{ success: boolean; data: any; message: string }>(
+        `/staging-template/${templateId}/status`,
+        { status }
+      );
+      return response;
+    } catch (error) {
+      this.handleError(error, 'update staging status');
+    }
+  }
+
+  /**
+   * Batch upsert step approval for multiple templates in a single request
+   */
+  async batchUpsertStepApproval(
+    templateIds: string[],
+    stepKey: string,
+    status: string
+  ): Promise<{ success: boolean; data: any; message: string }> {
+    try {
+      const response = await this.put<{ success: boolean; data: any; message: string }>(
+        `/client/templates/step-approval/batch`,
+        { templateIds, stepKey, status }
+      );
+      return response;
+    } catch (error) {
+      this.handleError(error, 'batch upsert step approval');
+    }
+  }
+
+  /**
+   * Get step approval status metadata for all templates in an account
+   */
+  async getStepStatusByAccountId(accountId: number): Promise<any | null> {
+    try {
+      const response = await this.get<{ success: boolean; data: Record<string, any> }>(
+        `/account/${accountId}/step-status`
+      );
+      return response;
+    } catch (error) {
+      this.handleError(error, 'get step status by account');
     }
   }
 

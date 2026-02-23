@@ -46,7 +46,7 @@ export const LandingPreview: React.FC<LandingPreviewProps> = ({
   });
 
   const { actions, error, clientData } = useClientFlowStore();
-  const { getCleintTemplatesData } = useClientFlow();
+  const { getClientTemplatesData } = useClientFlow();
   const { clientTemplateDetailsLoading } = useLoadingStore();
 
   // Fixed desktop preview for landing page
@@ -64,7 +64,7 @@ export const LandingPreview: React.FC<LandingPreviewProps> = ({
 
   useEffect(() => {
     if (accountDetails && !clientData) {
-      getCleintTemplatesData(accountDetails.id);
+      getClientTemplatesData(accountDetails.id);
     }
   }, [accountDetails]);
 
@@ -77,7 +77,7 @@ export const LandingPreview: React.FC<LandingPreviewProps> = ({
         domain={accountDetails?.domain}
         onRefresh={() => {
           if (accountDetails) {
-            getCleintTemplatesData(accountDetails.id);
+            getClientTemplatesData(accountDetails.id);
           }
         }}
         loading={clientTemplateDetailsLoading}

@@ -134,12 +134,16 @@ export const checkObjectDiff = (
 
 export const splitByAndCapitalize = (
   str: string,
-  delimiter: string = '_'
+  delimiter: string = '_',
+  returningElementIndex?: number
 ): string => {
-  return str
+  const words = str
     .split(delimiter)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  if (returningElementIndex !== undefined) {
+    return words[returningElementIndex];
+  }
+  return words.join(' ');
 };
 
 export const sanitizeHtml = async (dirtyHTML: string) => {
@@ -177,7 +181,7 @@ export const sanitizeHtml = async (dirtyHTML: string) => {
  */
 export const decodeHtmlEntities = (str: string): string => {
   if (typeof str !== 'string') return str;
-  
+
   // Create a temporary DOM element to decode HTML entities
   const textarea = document.createElement('textarea');
   textarea.innerHTML = str;
@@ -280,6 +284,6 @@ export const disableEditorForCleint = () => {
     carousel: {
       enabled: false,
     },
-    
+
   }
 } 

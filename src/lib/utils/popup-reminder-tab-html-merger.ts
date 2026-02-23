@@ -33,6 +33,24 @@ class DynamicHTMLMerger {
           /* Entrance Animations */
           ${this.generateEntranceAnimations(animationConfig)}
 
+          /* Wrapper for positioning - inner tab has entrance animation */
+          .reminder-tab-wrapper {
+              left: 0;
+              right: 0;
+              pointer-events: none;
+          }
+          .reminder-tab-wrapper > .reminder-tab {
+              pointer-events: auto;
+              position: relative;
+              top: auto;
+              left: auto;
+              right: auto;
+          }
+          .reminder-tab-wrapper.position-left { left: 0; right: auto; }
+          .reminder-tab-wrapper.position-right { left: auto; right: 0; }
+          .reminder-tab-wrapper.position-left > .reminder-tab { left: 0; right: auto; }
+          .reminder-tab-wrapper.position-right > .reminder-tab { left: auto; right: 0; }
+
           /* Desktop Reminder Tab Styles */
           .reminder-tab {
               position: fixed;
@@ -229,17 +247,17 @@ class DynamicHTMLMerger {
       case 'slideIn':
         return `
           .reminder-tab.position-left {
-            animation: slideInLeft ${duration} ease-out;
+            animation: slideInLeft ${duration} ease-out forwards;
           }
           .reminder-tab.position-right {
-            animation: slideInRight ${duration} ease-out;
+            animation: slideInRight ${duration} ease-out forwards;
           }`;
       case 'fadeIn':
-        return `.reminder-tab { animation: fadeIn ${duration} ease-out; }`;
+        return `.reminder-tab { animation: fadeIn ${duration} ease-out forwards; }`;
       case 'bounceIn':
-        return `.reminder-tab { animation: bounceIn ${duration} ease-out; }`;
+        return `.reminder-tab { animation: bounceIn ${duration} ease-out forwards; }`;
       case 'zoomIn':
-        return `.reminder-tab { animation: zoomIn ${duration} ease-out; }`;
+        return `.reminder-tab { animation: zoomIn ${duration} ease-out forwards; }`;
       default:
         return '';
     }
@@ -253,13 +271,13 @@ class DynamicHTMLMerger {
 
     switch (animationType) {
       case 'slideIn':
-        return `.mobile-floating-button { animation: slideInUp ${duration} ease-out; }`;
+        return `.mobile-floating-button { animation: slideInUp ${duration} ease-out forwards; }`;
       case 'fadeIn':
-        return `.mobile-floating-button { animation: fadeIn ${duration} ease-out; }`;
+        return `.mobile-floating-button { animation: fadeIn ${duration} ease-out forwards; }`;
       case 'bounceIn':
-        return `.mobile-floating-button { animation: bounceIn ${duration} ease-out; }`;
+        return `.mobile-floating-button { animation: bounceIn ${duration} ease-out forwards; }`;
       case 'zoomIn':
-        return `.mobile-floating-button { animation: zoomIn ${duration} ease-out; }`;
+        return `.mobile-floating-button { animation: zoomIn ${duration} ease-out forwards; }`;
       default:
         return '';
     }
@@ -272,11 +290,21 @@ class DynamicHTMLMerger {
     const desktopEnabled = desktopConfig?.enabled && config.enabled;
     const mobileEnabled = mobileConfig?.enabled && config.enabled;
 
+    // Use wrapper for vertical centering so inline transform doesn't override entrance animation.
+    // The inner tab has the animation; the wrapper handles top/transform for positioning.
+    const tabHeight = desktopConfig?.styling?.dimensions?.height || 160;
+    const topVal = desktopConfig.display?.initialPosition?.top || '50%';
+    const transformVal = desktopConfig.display?.initialPosition?.transform || 'translateY(-50%)';
+    const isPercentTop = String(topVal).includes('%');
+    const marginTop = isPercentTop ? `margin-top: -${tabHeight / 2}px;` : '';
+
+    const position = desktopConfig.display?.position || 'right';
     const desktopTab = desktopEnabled ? 
-      `<div id="reminderTab" class="reminder-tab position-${desktopConfig.display?.position || 'right'}" style="top: ${desktopConfig.display?.initialPosition?.top || '50%'}; transform: ${desktopConfig.display?.initialPosition?.transform || 'translateY(-50%)'};">
+      `<div id="reminderTabWrapper" class="reminder-tab-wrapper position-${position}" style="position:fixed;top:${topVal};${marginTop}${transformVal ? `transform:${transformVal};` : ''}z-index:1000;">
+          <div id="reminderTab" class="reminder-tab position-${position}">
           <div class="reminder-tab-text">${this.escapeHTML(desktopConfig.display?.text || 'Special Offer!')}</div>
           ${desktopConfig.interactions?.dragging?.enabled ? this.generateDragger() : ''}
-      </div>` : '';
+      </div></div>` : '';
 
     const mobileButton = mobileEnabled ? 
       `<div id="mobileFloatingButton" class="mobile-floating-button">
@@ -329,7 +357,7 @@ class DynamicHTMLMerger {
   (function(){
     if(window.__reminderTabScriptLoaded)return;
     window.__reminderTabScriptLoaded=true;
-  ${hasDesktop ? `const ReminderTab=class{constructor(){this.tab=document.getElementById("reminderTab"),this.dragger=this.tab?.querySelector(".reminder-tab-dragger"),this.isDragging=!1,this.currentPosition="${desktopConfig?.display?.position || 'right'}",this.dragTimeout=null,this.init()}init(){if(!this.tab)return;${desktopConfig?.interactions?.clicking?.enabled !== false ? 'this.tab.addEventListener("click",t=>{this.isDragging||t.target===this.dragger||this.openPopup()});' : ''}${desktopConfig?.interactions?.dragging?.enabled ? 'this.addDragListeners();' : ''}}${desktopConfig?.interactions?.dragging?.enabled ? `addDragListeners(){if(!this.dragger)return;this.dragger.addEventListener("mousedown",t=>{t.stopPropagation(),t.preventDefault(),this.startDrag()}),this.dragger.addEventListener("touchstart",t=>{t.stopPropagation(),t.preventDefault(),this.startDrag()},{passive:!1}),document.addEventListener("mousemove",t=>this.drag(t)),document.addEventListener("mouseup",()=>this.endDrag()),document.addEventListener("touchmove",t=>this.drag(t.touches[0]),{passive:!1}),document.addEventListener("touchend",()=>this.endDrag())}startDrag(){this.isDragging=!0,this.tab.classList.add("dragging"),document.body.style.userSelect="none"}drag(t){if(!this.isDragging)return;const e=t.clientX,i=t.clientY,s=window.innerWidth,n=window.innerHeight,r=this.tab.offsetHeight;let o=i-r/2;o=Math.max(0,Math.min(o,n-r));const a=e<s/2?"left":"right";a!==this.currentPosition&&this.updatePosition(a),this.tab.style.top=o+"px",this.tab.style.transform="none"}endDrag(){this.isDragging&&(this.isDragging=!1,this.tab.classList.remove("dragging"),document.body.style.userSelect="",clearTimeout(this.dragTimeout),this.dragTimeout=setTimeout(()=>{this.isDragging=!1},150))}updatePosition(t){this.tab.classList.remove("position-left","position-right"),this.tab.classList.add(\`position-\${t}\`),this.currentPosition=t}` : ''}openPopup(){const t=new CustomEvent("openReminderPopup",{detail:{source:"reminderTab"}});document.dispatchEvent(t),"function"==typeof window.openReminderPopup&&window.openReminderPopup()}setText(t){const e=this.tab?.querySelector(".reminder-tab-text");e&&(e.textContent=t)}setPosition(t){"left"!==t&&"right"!==t||this.updatePosition(t)}show(){this.tab&&(this.tab.style.display="flex")}hide(){this.tab&&(this.tab.style.display="none")}getPosition(){return this.currentPosition}}` : ''}
+  ${hasDesktop ? `const ReminderTab=class{constructor(){this.tab=document.getElementById("reminderTab"),this.wrapper=document.getElementById("reminderTabWrapper"),this.dragEl=this.wrapper||this.tab,this.dragger=this.tab?.querySelector(".reminder-tab-dragger"),this.isDragging=!1,this.currentPosition="${desktopConfig?.display?.position || 'right'}",this.dragTimeout=null,this.init()}init(){if(!this.tab)return;${desktopConfig?.interactions?.clicking?.enabled !== false ? 'this.tab.addEventListener("click",t=>{this.isDragging||t.target===this.dragger||this.openPopup()});' : ''}${desktopConfig?.interactions?.dragging?.enabled ? 'this.addDragListeners();' : ''}}${desktopConfig?.interactions?.dragging?.enabled ? `addDragListeners(){if(!this.dragger)return;this.dragger.addEventListener("mousedown",t=>{t.stopPropagation(),t.preventDefault(),this.startDrag()}),this.dragger.addEventListener("touchstart",t=>{t.stopPropagation(),t.preventDefault(),this.startDrag()},{passive:!1}),document.addEventListener("mousemove",t=>this.drag(t)),document.addEventListener("mouseup",()=>this.endDrag()),document.addEventListener("touchmove",t=>this.drag(t.touches[0]),{passive:!1}),document.addEventListener("touchend",()=>this.endDrag())}startDrag(){this.isDragging=!0,this.tab.classList.add("dragging"),this.dragEl.classList.add("dragging"),document.body.style.userSelect="none"}drag(t){if(!this.isDragging)return;const e=t.clientX,i=t.clientY,s=window.innerWidth,n=window.innerHeight,r=this.tab.offsetHeight;let o=i-r/2;o=Math.max(0,Math.min(o,n-r));const a=e<s/2?"left":"right";a!==this.currentPosition&&this.updatePosition(a),this.dragEl.style.top=o+"px",this.dragEl.style.transform="none"}endDrag(){this.isDragging&&(this.isDragging=!1,this.tab.classList.remove("dragging"),this.dragEl.classList.remove("dragging"),document.body.style.userSelect="",clearTimeout(this.dragTimeout),this.dragTimeout=setTimeout(()=>{this.isDragging=!1},150))}updatePosition(t){this.tab.classList.remove("position-left","position-right"),this.tab.classList.add(\`position-\${t}\`),this.wrapper&&(this.wrapper.classList.remove("position-left","position-right"),this.wrapper.classList.add(\`position-\${t}\`)),this.currentPosition=t}` : ''}openPopup(){const t=new CustomEvent("openReminderPopup",{detail:{source:"reminderTab"}});document.dispatchEvent(t),"function"==typeof window.openReminderPopup&&window.openReminderPopup()}setText(t){const e=this.tab?.querySelector(".reminder-tab-text");e&&(e.textContent=t)}setPosition(t){"left"!==t&&"right"!==t||this.updatePosition(t)}show(){this.tab&&(this.tab.style.display="flex");this.wrapper&&(this.wrapper.style.display="block")}hide(){this.tab&&(this.tab.style.display="none");this.wrapper&&(this.wrapper.style.display="none")}getPosition(){return this.currentPosition}}` : ''}
 
   ${hasMobile ? `const MobileFloatingButton=class{constructor(){this.button=document.getElementById("mobileFloatingButton"),this.init()}init(){this.button&&this.button.addEventListener("click",()=>{this.openPopup()})}openPopup(){const t=new CustomEvent("openReminderPopup",{detail:{source:"mobileButton"}});document.dispatchEvent(t),"function"==typeof window.openReminderPopup&&window.openReminderPopup()}show(){this.button&&(this.button.style.display="flex")}hide(){this.button&&(this.button.style.display="none")}}` : ''}
 
@@ -381,6 +409,12 @@ export class OptimizedHTMLMerger {
         ? reminderInput
         : this.reminderGenerator.generateHTML(reminderInput);
 
+    // Extract popupTriggerType from reminder config when available
+    const popupTriggerType =
+      typeof reminderInput === 'object' && reminderInput?.animations?.popupTrigger?.type
+        ? reminderInput.animations.popupTrigger.type
+        : options.popupTriggerType;
+
     const config: Required<MergeOptions> = {
       popupSelector: '.u-popup-container',
       triggerSelector: '#reminderTab, #mobileFloatingButton',
@@ -396,7 +430,10 @@ export class OptimizedHTMLMerger {
       autoOpenPopup: false,
       disableCloseButtons: false,
       hideReminderTab: false,
+      popupTriggerType: 'modal',
+      autoOpenDelay: 100,
       ...options,
+      ...(popupTriggerType && { popupTriggerType }),
     };
 
     return this.buildMergedHTML(reminderHtml, templateHtml, config);
@@ -448,6 +485,7 @@ export class OptimizedHTMLMerger {
         `<!DOCTYPE html><html><body>${reminderBody}</body></html>`,
         'text/html'
       );
+      bodyDoc.getElementById('reminderTabWrapper')?.remove();
       bodyDoc.getElementById('reminderTab')?.remove();
       bodyDoc.getElementById('mobileFloatingButton')?.remove();
       reminderBody = bodyDoc.body ? bodyDoc.body.innerHTML : '';
@@ -617,11 +655,8 @@ export class OptimizedHTMLMerger {
           }
           
           function getTriggerAnimationType() {
-              // Try to get animation type from reminder config if available
-              if (window.reminderTab && window.reminderTab.config && window.reminderTab.config.animations) {
-                  return window.reminderTab.config.animations.popupTrigger?.type || 'modal';
-              }
-              return 'modal';
+              // Use popupTriggerType from merger config (injected from reminder_tab_state_json)
+              return ${JSON.stringify(config.popupTriggerType || 'modal')};
           }
           
           function showPopup() {
@@ -635,10 +670,13 @@ export class OptimizedHTMLMerger {
               
               popupElement.style.display = 'flex';
               
-              // Force reflow for animation
+              // Force reflow so browser applies initial state before transition
               void popupElement.offsetWidth;
               
-              popupElement.classList.add('active');
+              // Use rAF to ensure initial state is painted before adding active (enables transition)
+              requestAnimationFrame(function() {
+                  popupElement.classList.add('active');
+              });
               popupElement.setAttribute('aria-hidden', 'false');
               
               setTimeout(() => {
@@ -719,10 +757,11 @@ export class OptimizedHTMLMerger {
               
               // Auto-open popup if enabled
               if (autoOpen && popupElement) {
-                  // Small delay to ensure all elements are properly rendered
+                  // Delay allows reminder tab entrance animation to complete first
+                  const delay = ${config.autoOpenDelay ?? 100};
                   setTimeout(() => {
                       showPopup();
-                  }, 100);
+                  }, delay);
               }
           }
           

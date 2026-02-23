@@ -62,16 +62,17 @@ function processTextContent(
   templateFieldsMap: Map<string, CBTemplateFieldContentIdMapping>
 ): { processedText: string; foundFieldIds: string[] } {
   const foundFieldIds: string[] = [];
-  
-  
+
+
   const processedText = text.replace(TEMPLATE_FIELD_REGEX, (match, fieldId) => {
     const templateField = templateFieldsMap.get(fieldId);
     if (templateField) {
       foundFieldIds.push(fieldId);
-      
+
       // Replace the placeholder with the default value and inject id attribute
       return injectIdIntoElement(templateField.default_field_value, fieldId);
     } else {
+      console.warn(`[TemplateProcessor] No template field found for: ${fieldId}`);
     }
     // Return the original placeholder if no matching field is found
     return match;
@@ -87,21 +88,21 @@ function injectIdIntoElement(content: string, fieldId: string): string {
   // Check if content contains HTML tags
   const htmlTagRegex = /<(\w+)([^>]*)>/;
   const match = content.match(htmlTagRegex);
-  
+
   if (match) {
     // Content has HTML tags, inject id into the first tag
     const tagName = match[1];
     const existingAttributes = match[2];
-    
+
     // Check if id attribute already exists
     const idRegex = /\bid\s*=\s*["']([^"']*)["']/;
     const existingId = existingAttributes.match(idRegex);
-    
+
     if (existingId) {
-      // Update existing id attribute to include field_id
+      // Replace existing id with field_id (don't append, replace completely)
       const updatedAttributes = existingAttributes.replace(
         idRegex,
-        `id="${existingId[1]} ${fieldId}"`
+        `id="${fieldId}"`
       );
       return content.replace(htmlTagRegex, `<${tagName}${updatedAttributes}>`);
     } else {
@@ -161,6 +162,37 @@ function processContent(
     );
     content.values.html = processedText;
   }
+
+  // When a merge tag is inserted via Unlayer's merge tag picker, it is stored in
+  // textJson (Lexical editor state) as a merge_tag node — the `text` field is left
+  // absent entirely. processTextContent never sees it, so no id-annotated span is
+  // ever written, and the client preview can't find the element.
+  // Fix: if `text` is absent but textJson contains {{field_id}}, synthesise the
+  // `text` field with the default value and injected ID so Unlayer exports the
+  // correct span. textJson is left untouched so the editor continues to show the
+  // merge tag placeholder when the admin reopens the template.
+  if (!content.values.text && content.values.textJson) {
+    try {
+      const textJsonStr =
+        typeof content.values.textJson === 'string'
+          ? content.values.textJson
+          : JSON.stringify(content.values.textJson);
+
+      const mergeTagMatch = /\{\{([^}]+)\}\}/.exec(textJsonStr);
+      if (mergeTagMatch) {
+        const fieldId = mergeTagMatch[1];
+        const templateField = templateFieldsMap.get(fieldId);
+        if (templateField) {
+          content.values.text = injectIdIntoElement(
+            templateField.default_field_value,
+            fieldId
+          );
+        }
+      }
+    } catch {
+      // Silently skip — textJson parse failure should not block the save
+    }
+  }
 }
 
 /**
@@ -210,28 +242,34 @@ function processDesignContent(
 
 /**
  * Main function to process template fields in unlayer design JSON
- * This function replaces {{field_id}} placeholders with actual values and updates htmlID fields
- * 
+ * This function replaces {{field_id}} placeholders with actual default values and injects id attributes
+ *
+ * During template SAVE (admin flow):
+ * - Finds merge tags like {{template__heading-main}}
+ * - Replaces with default field value
+ * - Injects ID attribute: <span id="template__heading-main">Default Text</span>
+ *
+ * During CLIENT PREVIEW:
+ * - template-content-parser.ts finds elements by ID
+ * - Replaces default text with client-specific content
+ *
  * @param design - The unlayer design JSON object
  * @param templateFields - Array of template field mappings from the store
- * @returns The processed design JSON with replaced values
+ * @returns The processed design JSON with replaced values and ID attributes
  */
 export function processTemplateFields(
   design: UnlayerDesign,
   templateFields: CBTemplateFieldContentIdMapping[]
 ): UnlayerDesign {
-  
   // Create a deep copy to avoid mutating the original object
   const processedDesign = JSON.parse(JSON.stringify(design)) as UnlayerDesign;
-  
+
   // Create lookup map for efficient field access
   const templateFieldsMap = createTemplateFieldsMap(templateFields);
-  
-  // Extract field IDs first to see what we're looking for
-  const foundFieldIds = extractTemplateFieldIds(processedDesign);
-  
+
   // Process all content in the design
   processDesignContent(processedDesign, templateFieldsMap);
+
   return processedDesign;
 }
 

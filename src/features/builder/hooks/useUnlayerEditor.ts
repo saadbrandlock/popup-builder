@@ -519,11 +519,15 @@ export const useUnlayerEditor = (options: UseUnlayerEditorOptions): UseUnlayerEd
     ]
   );
 
-  // Clear polling interval on unmount so it does not leak
+  // Clear polling interval on unmount and reset isReady so that on re-mount
+  // the false→true transition fires the useEffect([isReady]) in consumer components.
+  // Without this reset, isReady stays true in the Zustand store across mounts, so the
+  // effect never re-fires and allCustomComponents is never re-populated.
   useEffect(() => {
     return () => {
       changeDetectionCleanupRef.current?.();
       changeDetectionCleanupRef.current = null;
+      actionsRef.current.setReady(false);
     };
   }, []);
 

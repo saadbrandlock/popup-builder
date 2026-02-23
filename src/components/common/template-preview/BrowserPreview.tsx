@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { BrowserPreviewProps } from '../../../features/client-flow/types/clientFlow';
 import { Safari } from '@/components/magicui/safari';
 import Android from '@/components/magicui/android';
 import { safeDecodeAndSanitizeHtml } from '@/lib/utils/helper';
 import { useOptimizedHTMLMerger } from '@/lib/hooks';
 import { ReminderTabConfig } from '@/features/builder/types';
+import { useClientFlowStore } from '@/stores/clientFlowStore';
+import { templateContentParser, ContentMapping } from '@/lib/utils/template-content-parser';
 
 /**
  * BrowserPreview - Enhanced wrapper that combines existing PopupPreview with website background
@@ -19,10 +21,28 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
   onPopupInteraction,
   className = '',
 }) => {
+  const [baseHtml, setBaseHtml] = useState<string>('');
   const [sanitizedHtml, setSanitizedHtml] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // iframeEl as state (not just ref) so the write-effect re-runs whenever a new
+  // iframe DOM node is mounted (e.g. when viewport switches Safari ↔ Android).
+  const [iframeEl, setIframeEl] = useState<HTMLIFrameElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const iframeCallbackRef = useCallback((el: HTMLIFrameElement | null) => {
+    iframeRef.current = el;
+    setIframeEl(el);
+  }, []);
   const { mergeFromRecord } = useOptimizedHTMLMerger();
+
+  const { contentFormData, selectedCouponsData, hasCouponSelectionChanged } = useClientFlowStore();
+
+  const contentMapping: ContentMapping = useMemo(() => {
+    const mapping: ContentMapping = {};
+    Object.entries(contentFormData).forEach(([fieldId, value]) => {
+      if (value && typeof value === 'string') mapping[fieldId] = value;
+    });
+    return mapping;
+  }, [contentFormData]);
 
   // Process popup template HTML when it changes
   useEffect(() => {
@@ -32,10 +52,11 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
         !Array.isArray(popupTemplate) ||
         popupTemplate.length === 0
       ) {
-        setSanitizedHtml('');
+        setBaseHtml('');
         return;
       }
 
+      setBaseHtml(''); // Clear stale content immediately so the iframe unmounts cleanly
       setIsProcessing(true);
       try {
         // Get the first template that matches the current viewport
@@ -59,13 +80,13 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
             }
           );
 
-          setSanitizedHtml(mergedHtml);
+          setBaseHtml(mergedHtml);
         } else {
-          setSanitizedHtml('');
+          setBaseHtml('');
         }
       } catch (error) {
         console.error('Error processing popup template HTML:', error);
-        setSanitizedHtml('');
+        setBaseHtml('');
       } finally {
         setIsProcessing(false);
       }
@@ -74,54 +95,60 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
     processPopupHtml();
   }, [popupTemplate, viewport]);
 
-  // Update iframe content when sanitizedHtml changes
+  // Apply content replacements (field values + coupons) on top of the base HTML
   useEffect(() => {
-    if (iframeRef.current && sanitizedHtml) {
-      const iframe = iframeRef.current;
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      
-      if (iframeDoc) {
-        iframeDoc.open();
-        iframeDoc.write(sanitizedHtml);
-        iframeDoc.close();
+    if (!baseHtml) { setSanitizedHtml(''); return; }
+    try {
+      let updatedHtml = templateContentParser.updateContent(baseHtml, contentMapping);
+      const shouldUpdateCoupons = (selectedCouponsData?.length ?? 0) > 0 || hasCouponSelectionChanged;
+      if (shouldUpdateCoupons) {
+        updatedHtml = templateContentParser.updateCouponList(updatedHtml, selectedCouponsData ?? []);
+      }
+      setSanitizedHtml(updatedHtml);
+    } catch {
+      setSanitizedHtml(baseHtml);
+    }
+  }, [baseHtml, contentMapping, selectedCouponsData, hasCouponSelectionChanged]);
 
-        // Setup interaction handlers if interactive mode is enabled
-        if (interactive) {
-          const handlePopupInteraction = (event: string) => {
-            onPopupInteraction?.(event);
-          };
+  // Write content whenever sanitizedHtml changes OR whenever a new iframe DOM element
+  // is mounted (iframeEl changes). The second case covers viewport switches where
+  // Safari ↔ Android swap destroys the old iframe and creates a fresh empty one —
+  // sanitizedHtml doesn't change so [sanitizedHtml] alone would never re-fire.
+  useEffect(() => {
+    if (!iframeEl || !sanitizedHtml) return;
+    const iframeDoc = iframeEl.contentDocument || iframeEl.contentWindow?.document;
 
-          // Listen for custom events from the iframe
-          iframe.contentWindow?.addEventListener('popupInteraction', (e: any) => {
-            handlePopupInteraction(e.detail?.type || 'popup-interaction');
-          });
-        }
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(sanitizedHtml);
+      iframeDoc.close();
+
+      if (interactive) {
+        iframeEl.contentWindow?.addEventListener('popupInteraction', (e: any) => {
+          onPopupInteraction?.(e.detail?.type || 'popup-interaction');
+        });
       }
     }
-  }, [sanitizedHtml, interactive, onPopupInteraction]);
+  }, [sanitizedHtml, iframeEl, interactive, onPopupInteraction]);
 
-  // Render popup overlay component
-  const PopupOverlay = () => {
-    if (!sanitizedHtml || isProcessing) {
-      return null;
-    }
-
-    return (
-      <iframe
-        ref={iframeRef}
-        className="w-full h-full border-0 bg-transparent"
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          background: 'transparent',
-          overflow: 'hidden'
-        }}
-        title="Interactive Popup Preview"
-        sandbox="allow-scripts allow-same-origin allow-forms"
-      />
-    );
-  };
+  // Inline the iframe directly — never define components inside render functions,
+  // as React creates a new type each render which unmounts/remounts the iframe and
+  // breaks the write-to-iframe effect (iframeRef.current becomes null at the wrong time).
+  const popupIframe = sanitizedHtml ? (
+    <iframe
+      ref={iframeCallbackRef}
+      className="w-full h-full border-0 bg-transparent"
+      style={{
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        background: 'transparent',
+        overflow: 'hidden',
+      }}
+      title="Interactive Popup Preview"
+      sandbox="allow-scripts allow-same-origin allow-forms"
+    />
+  ) : null;
 
   return (
     <div className="w-full flex justify-center">
@@ -133,7 +160,7 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
           align="top"
           className="w-full"
         >
-          <PopupOverlay />
+          {popupIframe}
         </Safari>
       ) : (
         <Android
@@ -143,7 +170,7 @@ export const BrowserPreview: React.FC<BrowserPreviewProps> = ({
           fit="contain"
           align="top"
         >
-          <PopupOverlay />
+          {popupIframe}
         </Android>
       )}
     </div>
